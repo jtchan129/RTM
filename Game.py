@@ -1,7 +1,6 @@
 import pandas as pd
 from Roles import *
-from pydrive.auth import GoogleAuth 
-from pydrive.drive import GoogleDrive 
+import gspread
 from collections import defaultdict
 import os
 import random
@@ -9,39 +8,40 @@ import smtplib
 from email.mime.text import MIMEText
 
 
-# Taken from URL's of corresponding role assignments, night actions, and voting spreadsheets
+# These are the fields that need to be changed before the start of a game
+#####################################################################################################################
 players_link_id = '1Xx1eEDy7PN5LafDeyJ0hxnFAY9LCWgU6vyC0E9detuU'
 role_distribution_link_id = '1RLU1KegpTHqnU3Si2SLHGI5_XSaZLiP86VOohy9c7NI'
 actions_link_id = '13lOQq90paeseCAJBkM4p-F2mln9_xhCyT1fcF7IGPho'
 voting_link_id = '1P1mEFeEJhPkXKkgFxO6FNVyWyy2p37jMA03VQBvBX8Q'
 newGF_link_id = '1rVmFK2hs9-VrTkXetdD_IKtnbygOd7TMU5acCGALFxg'
 
+google_API_credentials_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/studious-sign-261101-640910fb478b.json'
+mod_email_app_password_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/mod_email_app_password.csv'
+#####################################################################################################################
 
-# Taken and adapted from https://www.geeksforgeeks.org/collecting-data-with-google-forms-and-pandas/
+# Takes a Google Sheets file ID and a name for the .csv file the data will be saved to
+# Taken and adapted from https://docs.gspread.org/en/latest/oauth2.html and https://docs.gspread.org/en/latest/user-guide.html#using-gspread-with-pandas
 def pull_data(file_id, file_name):
-    gauth = GoogleAuth()
+    gc = gspread.service_account(filename=google_API_credentials_path)
 
-    # Added this code segment to not require logging in through browser each time
-    ###########################################
-    gauth.LoadCredentialsFile("credentials.json")
-    
-    if gauth.credentials is None or gauth.access_token_expired:
-        gauth.LocalWebserverAuth()
-        gauth.SaveCredentialsFile("credentials.json")
-    else:
-        gauth.Authorize()
-    ###########################################
-    
-    drive = GoogleDrive(gauth)
-    
-    # Initialize GoogleDriveFile instance with file id
-    file_obj = drive.CreateFile({'id': file_id})
-    file_obj.GetContentFile(file_name, mimetype='text/csv')
-    
-    dataframe = pd.read_csv(file_name)
+    sheet = gc.open_by_key(file_id)
+    worksheet = sheet.get_worksheet(0)
 
-    return dataframe
+    dataframe = pd.DataFrame(worksheet.get_all_records())
 
+    dataframe.to_csv(file_name, index=False)
+
+    return dataframe, worksheet
+
+# Reupload the file to Google Drive
+def update_file(dataframe, worksheet):
+    worksheet.update([dataframe.columns.values.tolist()] + dataframe.values.tolist())
+
+# Remove all data besides headers from a sheet
+def clear_data(worksheet):
+    worksheet.resize(rows=1)
+    worksheet.resize(rows=150)
 
 # Mode should be 'night'. 'day', or newGF
 def find_last_file(mode):
@@ -63,7 +63,7 @@ def find_last_file(mode):
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
 def send_email(receiver_email, message_text_list, subject):
-    dataframe = pd.read_csv('mod_email_app_password.csv')
+    dataframe = pd.read_csv(mod_email_app_password_path)
     sender_email = dataframe.loc[0, 'email']
     sender_app_password = dataframe.loc[0, 'app_password']
 
@@ -107,10 +107,8 @@ class Game:
     # start_game, run_night, and run_voting are independent of each other: They are never run on the same game object they individually interact with the game_state.csv file
     def start_game(self):
         # Load file of player names, emails and role distribution from google drive
-        pull_data(players_link_id, 'game_state0_day0.csv')
-        temp_role_dist_df = pull_data(role_distribution_link_id, 'role_distribution.csv')
-        # Selecting only the first two columns and only keeping rows with values in the 'Role Distribution Category' column
-        role_dist_df = temp_role_dist_df[['Role Distribution Category', 'Actual Role Distribution']].dropna(subset=['Role Distribution Category'])
+        state_df, state_worksheet = pull_data(players_link_id, 'game_state0_day0.csv')
+        role_dist_df, role_dist_worksheet = pull_data(role_distribution_link_id, 'role_distribution.csv')
 
         # Randomly select role distribution based on categories
         town_investigative_list = ['Detective', 'Cop', 'Tracker', 'Watcher']
@@ -119,6 +117,8 @@ class Game:
         town_random_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor']
         mafia_list = ['Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur']
         neutral_list = ['Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
+        # Used to assign specific roles
+        full_roles_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor', 'Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur', 'Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
         # Used in removing unique roles
         role_lists_list = [town_investigative_list, town_killing_list, town_support_list, mafia_list, neutral_list]
 
@@ -129,13 +129,13 @@ class Game:
                        'Saboteur': 1,}
         
         role_assignments_list = []
+
+        print(role_dist_df)
         
         for index, row in role_dist_df.iterrows():
             if row['Role Distribution Category'] is not None:
                 assigned_role = ''
-                if row['Role Distribution Category'] == 'Godfather':
-                    assigned_role = 'Godfather'
-                elif row['Role Distribution Category'] == 'Town Investigative':
+                if row['Role Distribution Category'] == 'Town Investigative':
                     assigned_role = random.choice(town_investigative_list)
                 elif row['Role Distribution Category'] == 'Town Killing':
                     assigned_role = random.choice(town_killing_list)
@@ -147,8 +147,10 @@ class Game:
                     assigned_role = random.choice(mafia_list)
                 elif row['Role Distribution Category'] == 'Neutral':
                     assigned_role = random.choice(neutral_list)
+                elif row['Role Distribution Category'] in full_roles_list:
+                    assigned_role = row['Role Distribution Category']
                 else:
-                    print('Error in assigning roles')
+                    print('Error in generating roles')
                 
                 for unique_role in unique_dict:
                     if assigned_role == unique_role:
@@ -161,39 +163,42 @@ class Game:
                 role_dist_df.loc[index, 'Actual Role Distribution'] = assigned_role
                 role_assignments_list.append(assigned_role)
 
-        print(role_dist_df)
-
         # Add new columns for the night each player died, the number of times they have used their action, whether they are doused, whether they are sabotaged, and whether they are marked for death
-        game_state_file = 'game_state0_day0.csv'
-        temp_state_df = pd.read_csv(game_state_file)
-        temp_state_df['Time died'] = 'Alive'
-        temp_state_df['Actions used'] = 0
-        temp_state_df['Doused'] = 0
-        temp_state_df['Sabotaged'] = 0
-        temp_state_df['Marked'] = 0
+        state_df['Time died'] = 'Alive'
+        state_df['Actions used'] = 0
+        state_df['Doused'] = 0
+        state_df['Sabotaged'] = 0
+        state_df['Marked'] = 0
+        state_df['Revealed Mayor'] = 0
 
         # Populate the players roles randomly with the roles from the generated distribution
         random.shuffle(role_assignments_list)
-        for index, row in temp_state_df.iterrows():
-            temp_state_df.loc[index, 'Role'] = role_assignments_list[index]
-        
-        temp_state_df.to_csv(game_state_file, index=False)
+        for index, row in state_df.iterrows():
+            state_df.loc[index, 'Role'] = role_assignments_list[index]
 
-        # Reupload the file to Google Drive
-        gauth = GoogleAuth()
-        gauth.LoadCredentialsFile("credentials.json")
+        # Send emails informing people of their roles
+        revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper']
+        mafia_emails = []
+        mafia_names = ['The mafia members are']
+        for index, row in state_df.iterrows():
+            email_message = 'Your role is ' + row['Role']
+            email_subject = 'RTM Role Assignments'
+            send_email(row['Email'], email_message, email_subject)
+            if row['Role'] in revealed_mafia_list:
+                mafia_emails.append(row['Email'])
+                mafia_names.append(row['Name'])
+        mafia_subject = 'Mafia members'
+        send_email(mafia_emails, mafia_names, mafia_subject)
         
-        if gauth.credentials is None or gauth.access_token_expired:
-            gauth.LocalWebserverAuth()
-            gauth.SaveCredentialsFile("credentials.json")
-        else:
-            gauth.Authorize()
-            
-        drive = GoogleDrive(gauth)
-        
-        file_obj = drive.CreateFile({'id': players_link_id})
-        file_obj.SetContentFile('game_state0_day0.csv')
-        file_obj.Upload()
+        # Save the game state to be accessed later
+        state_df.to_csv('game_state0_day0.csv', index=False)
+
+        # Reupload the updated files to Google Drive
+        upload_state_df = state_df[['Name', 'Email', 'Role']]
+        update_file(upload_state_df, state_worksheet)
+
+        upload_role_dist_df = role_dist_df
+        update_file(upload_role_dist_df, role_dist_worksheet)
 
 
     def run_night(self):
@@ -206,7 +211,7 @@ class Game:
         self.state_df = pd.read_csv(last_state_file)
 
         # Load file of night actions from google drive
-        self.actions_df = pull_data(actions_link_id, 'actions_night' + str(self.night_num) + '.csv')
+        self.actions_df, actions_worksheet = pull_data(actions_link_id, 'actions_night' + str(self.night_num) + '.csv')
 
         # Creating set of play objects
         self.create_players()
@@ -230,7 +235,7 @@ class Game:
         self.update_state_file()
 
         # Clear the actions spreadsheet
-        # self.clear_actions()
+        clear_data(actions_worksheet)
 
         # Send email to everyone with public result
         send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' results')
@@ -242,7 +247,7 @@ class Game:
         self.state_num = last_state_num + 1
         day_num = last_day_num + 1
 
-        column_name = 'Day ' + str(day_num)
+        day_column_name = 'Day ' + str(day_num)
 
         # Load the last game state file
         self.state_df = pd.read_csv(last_state_file)
@@ -250,49 +255,72 @@ class Game:
         # Create the group email to send public results
         self.create_rtm_group_email()
 
-        self.voting_df = pull_data(voting_link_id, 'voting_day' + str(day_num) + '.csv')
+        self.voting_df, voting_worksheet = pull_data(voting_link_id, 'voting_day' + str(day_num) + '.csv')
 
-        self.voting_df = self.voting_df[['Voting Player', column_name]]
+        self.voting_df = self.voting_df[['Voting Player', day_column_name]]
 
         # Set any non-valid votes to blank
         for index, row in self.voting_df.iterrows():
             voting_player_alive = (row['Voting Player'] in self.state_df.loc[self.state_df['Time died'] == 'Alive', 'Name'].values)
-            target_player_alive = (row[column_name] in self.state_df.loc[self.state_df['Time died'] == 'Alive', 'Name'].values) or row[column_name] == 'No vote'
+            target_player_alive = (row[day_column_name] in self.state_df.loc[self.state_df['Time died'] == 'Alive', 'Name'].values) or row[day_column_name] == 'No vote'
 
             if not voting_player_alive or not target_player_alive:
-                self.voting_df.loc[index, column_name] = ''
+                self.voting_df.loc[index, day_column_name] = ''
+
+        valid_votes_df = self.voting_df[self.voting_df[day_column_name] != ''][['Voting Player', day_column_name]]
+
+        # Creating a dictionary to count votes
+        voting_keys = list(self.state_df['Name'])
+        voting_dict = {key: 0 for key in voting_keys}
+        voting_dict['No vote'] = 0
+
+        for _, row in valid_votes_df.iterrows():
+            if self.state_df.loc[self.state_df['Name'] == row['Voting Player'], 'Revealed Mayor'].values == 1:
+                voting_dict[row[day_column_name]] = voting_dict[row[day_column_name]] + 3
+            else:
+                voting_dict[row[day_column_name]] = voting_dict[row[day_column_name]] + 1
         
+        # Take the counts of votes and sort them to later find the maximum
+        vote_counts = list(voting_dict.values())
+        vote_counts.sort(reverse=True)
+
         # Determining execute and public message
-        valid_votes = self.voting_df[self.voting_df[column_name] != ''][column_name]
-
-        if len(valid_votes.mode()) > 1:
-            self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by tied vote'
-        elif len(valid_votes.mode()) == 0 or valid_votes.mode()[0] == 'No vote':
+        if vote_counts[0] == 0:
             self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
+        elif vote_counts[0] == vote_counts[1]:
+            self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by tied vote'
         else:
-            most_voted = valid_votes.mode()[0]
-            self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to execute ' + most_voted
-            player_index = self.state_df[self.state_df['Name'] == most_voted].index
-            self.state_df.loc[player_index, 'Time died'] = ('Day ' + str(day_num))
+            most_voted = None
+            for voted_player, num_votes in voting_dict.items():
+                if num_votes == vote_counts[0]:
+                    most_voted = voted_player
+            # Getting voted player's role
+            most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role']
 
-            # Checking for Jester or Saboteur deaths
-            if self.state_df.loc[player_index, 'Role'].values[0] == 'Saboteur':
-                self.state_df.loc[self.state_df['Sabotaged'] == 1, 'Marked'] = 1
-            
-            if self.state_df.loc[player_index, 'Role'].values[0] == 'Jester':
-                jester_name = self.state_df.loc[player_index, 'Name']
-                vote_list = self.voting_df[(self.voting_df[column_name] == most_voted) & (self.voting_df['Voting Player'] != jester_name.values[0])]['Voting Player'].tolist()
-                if vote_list:
-                    jester_target_name = random.choice(vote_list)
-                    jester_target_index = self.state_df[self.state_df['Name'] == jester_target_name].index
-                    self.state_df.loc[jester_target_index, 'Marked'] = 1
+            if most_voted == 'No vote':
+                self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
+            else:
+                self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to execute ' + most_voted + ' the ' + most_voted_role
+                player_index = self.state_df[self.state_df['Name'] == most_voted].index
+                self.state_df.loc[player_index, 'Time died'] = ('Day ' + str(day_num))
 
-        
-        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(self.night_num) + ' execution results')
+                # Checking for Jester or Saboteur deaths
+                if self.state_df.loc[player_index, 'Role'].values[0] == 'Saboteur':
+                    self.state_df.loc[self.state_df['Sabotaged'] == 1, 'Marked'] = 1
+                
+                if self.state_df.loc[player_index, 'Role'].values[0] == 'Jester':
+                    jester_name = self.state_df.loc[player_index, 'Name']
+                    vote_list = self.voting_df[(self.voting_df[day_column_name] == most_voted) & (self.voting_df['Voting Player'] != jester_name.values[0])]['Voting Player'].tolist()
+                    if vote_list:
+                        jester_target_name = random.choice(vote_list)
+                        jester_target_index = self.state_df[self.state_df['Name'] == jester_target_name].index
+                        self.state_df.loc[jester_target_index, 'Marked'] = 1
+
+        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results')
 
         self.state_df.to_csv('game_state' + str(self.state_num) + '_day' + str(day_num) + '.csv', index=False)
 
-    # Might want to take the game_state file creation outside of the loop
+
     def assign_new_godfather(self):
         last_state_num, last_state_file, last_newGF_num = find_last_file('newGF')
         self.state_num = last_state_num + 1
@@ -312,6 +340,31 @@ class Game:
             self.state_df.loc[player_index, 'Role'] = 'Godfather'
             self.state_df.to_csv('game_state' + str(self.state_num) + '_newGF' + str(newGF_num) + '.csv', index=False)
 
+    
+    def reveal_mayor(self, mayor_name):
+        last_state_num, last_state_file, last_reveal_num = find_last_file('reveal')
+        self.state_num = last_state_num + 1
+        reveal_num = last_reveal_num + 1
+
+        # Load the last game state file
+        self.state_df = pd.read_csv(last_state_file)
+
+        self.create_rtm_group_email()
+
+        player_index = self.state_df[self.state_df['Name'] == mayor_name].index
+
+        if len(player_index) == 0:
+            print('Name not found')
+            return
+
+        if self.state_df.loc[player_index, 'Role'].values[0] == 'Mayor':
+            self.state_df.loc[player_index, 'Revealed Mayor'] = 1
+            
+            send_email(self.rtm_group_email, mayor_name + ' has revealed themselves as mayor', 'Mayor reveal')
+            self.state_df.to_csv('game_state' + str(self.state_num) + '_reveal' + str(reveal_num) + '.csv', index=False)
+        else:
+            print('Player is not a mayor')
+
 
     def create_rtm_group_email(self):
         for _, row in self.state_df.iterrows():
@@ -329,23 +382,23 @@ class Game:
             role_class = globals().get(row['Role'])
             if role_class:
                 if row['Time died'] == 'Alive':
-                    self.player_dict[role_class(name = row['Name'], email = row['Email'], player_dict = self.player_dict, dead = False, actions_used = row['Actions used'], doused = row['Doused'], sabotaged = row['Sabotaged'], marked = row['Marked'])] = []
+                    self.player_dict[role_class(name = row['Name'], email = row['Email'], player_dict = self.player_dict, dead = False, actions_used = row['Actions used'], doused = row['Doused'], sabotaged = row['Sabotaged'], marked = row['Marked'], revealed_mayor = row['Revealed Mayor'])] = []
                 else:
-                    self.player_dict[role_class(name = row['Name'], email = row['Email'], player_dict = self.player_dict, dead = True, actions_used = row['Actions used'])] = []
+                    self.player_dict[role_class(name = row['Name'], email = row['Email'], player_dict = self.player_dict, dead = True, actions_used = row['Actions used'], revealed_mayor = row['Revealed Mayor'])] = []
             else:
                 print('Error in creating ' + row['Role'] + ' role')
 
 
-    # This is probably not the best way to implement this
+    # There may be a more efficient way to do this
     def set_targets(self):
         for _, row in self.actions_df.iterrows():
             for player in self.player_dict:
                 # Setting arsonist action choice
                 if str(type(player).__name__) == 'Arsonist':
-                    arsonist_action = row['Arsonist only: \'Douse\', \'Undouse\', or \'Ignite\'']
+                    arsonist_action = row['Arsonist only: \'Douse\' \'Undouse\' or \'Ignite\'']
                     if arsonist_action == 'Undouse' or arsonist_action == 'Ignite':
                         player.arso_action = arsonist_action
-
+                # Setting targets for all players
                 for target in self.player_dict:
                     if player.get_name() == row['Name'] and target.get_name() == row['Who do you want to target with your night action']:
                         player.select_target(target)
@@ -358,7 +411,7 @@ class Game:
 
 
     def run_actions(self):
-        priority_list = ['Bus_driver', 'Limo_driver', 'Veteran', 'Witch', 'Escort', 'Hooker', 'Framer', 'Cop', 'Detective', 'Doctor', 'Bodyguard', 'Survivor', 'Vigilante', 'Bomb', 'Godfather', 'Sniper', 'Mass_murderer', 'Serial_killer', 'Arsonist', 'Janitor', 'Tracker', 'Stalker', 'Watcher', 'Lookout', 'Saboteur', 'Amnesiac']
+        priority_list = ['Bus_driver', 'Limo_driver', 'Veteran', 'Witch', 'Escort', 'Hooker', 'Framer', 'Cop', 'Detective', 'Doctor', 'Bodyguard', 'Survivor', 'Vigilante', 'Godfather', 'Sniper', 'Mass_murderer', 'Serial_killer', 'Arsonist', 'Janitor', 'Tracker', 'Stalker', 'Watcher', 'Lookout', 'Saboteur', 'Amnesiac']
         end_priotity_list = ['Janitor', 'Bodyguard', 'Bomb', 'Doctor', 'Yakuza']
 
         for player in self.player_dict:
@@ -437,23 +490,6 @@ class Game:
 
         self.state_df.to_csv('game_state' + str(self.state_num) + '_night' + str(self.night_num) + '.csv', index=False)
 
-    
-    def clear_actions(self):
-        gauth = GoogleAuth()
-        gauth.LoadCredentialsFile("credentials.json")
-        
-        if gauth.credentials is None or gauth.access_token_expired:
-            gauth.LocalWebserverAuth()
-            gauth.SaveCredentialsFile("credentials.json")
-        else:
-            gauth.Authorize()
-            
-        drive = GoogleDrive(gauth)
-        
-        file_obj = drive.CreateFile({'id': actions_link_id})
-        file_obj.SetContentFile('blank_actions.csv')
-        file_obj.Upload()
-
     # Not currently being used
     def check_win_conditions(self):
         last_state_num, last_state_file, last_night_num = find_last_file('night')
@@ -512,5 +548,3 @@ class Game:
                 win_public_message = win_public_message + winner_list[i] + ', '
             else:
                 win_public_message = win_public_message + 'and ' + winner_list[i]
-
-

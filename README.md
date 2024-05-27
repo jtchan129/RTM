@@ -33,3 +33,34 @@ Game.py file contains:
       - A reveal_mayor function that takes the most recent game state and a player name who wants to reveal themselves as mayor and sends that decision to players  
 Main.py file contains:
   - A menu to accept input from the user to select which function from Game.py to run
+
+The associated Google Sheets should be formatted as follows:
+Players file:
+| Name         | Email          | Role          |
+| ------------ | -------------- | ------------- |
+| Example name | Example email  | Empty         |
+| Example name | Example email  | Empty         |
+
+Role Distribution file:
+| Role Distribution Category | Actual Role Distribution |
+| ------------ | -------------- |
+| Example category | Empty |
+| Example category | Empty |
+
+Actions file:
+| Timestamp | Email | Name | Who do you want to target with your night action | Who do you want your second target to be | Arsonist only: 'Douse', 'Undouse', or 'Ignite' |
+|--- | --- | --- | --- |--- |--- |
+| Empty | Empty | Empty | Empty | Empty | Empty |
+
+Voting file:
+| Voting Player | Day 1 | Day 2 | Day 3 | Ect... |
+|--- | --- | --- | --- |--- |
+| Example name | Empty | Empty | Empty | Empty |
+| Example name | Empty | Empty | Empty | Empty |
+| Ect... | Empty | Empty | Empty | Empty |
+
+New Godfather file:
+| New godfather | Empty |
+| ------------ | -------------- |
+| Where the new godfather will be put | Empty |
+| Empty | Empty |

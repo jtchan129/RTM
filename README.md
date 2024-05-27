@@ -2,7 +2,7 @@
 ### Automated moderation of real-time mafia  
 The program contains 3 Python files, and a blank actions csv file.  
 
-It also requires setting up a Google Drive API in order to pull data from Google Sheets (needed for player data, role assignments, night actions, voting, and assigning new godfathers). Will need client_secrets.json and credentials.json files in the same folder. (https://www.geeksforgeeks.org/collecting-data-with-google-forms-and-pandas/ to set up Google Drive API)  
+It also requires setting up a Google Drive API in order to pull data from Google Sheets (needed for player data, role assignments, night actions, voting, and assigning new godfathers). Will need a .json file with credentials to use the API. (https://docs.gspread.org/en/latest/oauth2.html to set up Google Drive API)  
 
 Additionally requires setting up 2-factor authentication and an app password with a Gmail account in order to automate emails. I store Gmail username and app password in a mod_email_app_password.csv file with headers of "email", and "app_password" and data in their respective columns. (Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/)  
 In Game.py there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.  
@@ -34,6 +34,7 @@ Game.py file contains:
 Main.py file contains:
   - A menu to accept input from the user to select which function from Game.py to run
 
+### Google Sheet Setup
 The associated Google Sheets should be formatted as follows:
 Players file:
 | Name         | Email          | Role          |
@@ -47,7 +48,7 @@ Role Distribution file:
 | Example category | Empty |
 | Example category | Empty |
 
-Actions file:
+Actions file: (The headers row specifically needs to NOT be frozen or clearing data after a night will not work)
 | Timestamp | Email | Name | Who do you want to target with your night action | Who do you want your second target to be | Arsonist only: 'Douse', 'Undouse', or 'Ignite' |
 |--- | --- | --- | --- |--- |--- |
 | Empty | Empty | Empty | Empty | Empty | Empty |
@@ -64,3 +65,12 @@ New Godfather file:
 | ------------ | -------------- |
 | Where the new godfather will be put | Empty |
 | Empty | Empty |
+
+### Usage
+New moderators need to set up google drive API and Gmail API as well as replace the 5 links and 2 paths with the correct ones for their own game.  
+Make sure there is a google form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.
+- Run start_game to begin the game and assign roles  
+- Run run_night to process each night  
+- Run run_voting after votes are in each day  
+- Run new_godfather right before voting if there is no godfather (make sure the mafia knows they need to fill out the corresponding sheet)  
+- Run reveal_mayor whenever someone messages you they want to reveal as a mayor  

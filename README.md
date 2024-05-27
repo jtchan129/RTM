@@ -6,18 +6,18 @@ Additionally requires setting up 2-factor authentication and an app password wit
 In Game.py there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.
 
 Roles.py file contains:
-  Wrappers to ensure proper targeting by players
-  A Role class that is inherited by all other classes and contains:
-    Default attributes to be overwritten in special cases
-    Default initializer
-    Default functions all roles will need
-  Town, Mafia, and Neutral classes which inherit attributes from Role
-  Multi-role class defenitions for any roles that are identical between Town and Mafia roles
-  Each roles' class defenition which:
-    Inherit their factions class (and the Role class by extension) and a multi-role class if applicable
-    Have any unique attributes specific to the role
-    Defined night actions
+  -Wrappers to ensure proper targeting by players
+  -A Role class that is inherited by all other classes and contains:
+    -Default attributes to be overwritten in special cases
+    -Default initializer
+    -Default functions all roles will need
+  -Town, Mafia, and Neutral classes which inherit attributes from Role
+  -Multi-role class defenitions for any roles that are identical between Town and Mafia roles
+  -Each roles' class defenition which:
+    -Inherit their factions class (and the Role class by extension) and a multi-role class if applicable
+    -Have any unique attributes specific to the role
+    -Defined night actions
 
 Game.py file contrains:
-  5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.
+  -5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.
   

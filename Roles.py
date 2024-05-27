@@ -96,7 +96,7 @@ class Role:
     attack_level = 0
     number_actions = 10^4
 
-    def __init__(self, name, email, player_dict = None, dead = False, actions_used = 0, doused = 0, sabotaged = 0, marked = 0):
+    def __init__(self, name, email, player_dict = None, dead = False, actions_used = 0, doused = 0, sabotaged = 0, marked = 0, revealed_mayor = 0):
         self.name = name
         self.email = email
         self.attacked_by = []
@@ -108,6 +108,7 @@ class Role:
         self.corrupted = False
         self.sabotaged = sabotaged
         self.marked = marked
+        self.revealed_mayor = revealed_mayor
         self.actions_used = actions_used
         self.night_result = []
 
@@ -135,7 +136,7 @@ class Role:
                 if target == self:
                     targeted_by_list.append(player)
         return targeted_by_list
- 
+
     def get_name(self):
         return self.name
     
@@ -439,8 +440,8 @@ class Framer(Mafia):
 
 class Yakuza(Mafia):
     random_mafia = ['Limo_driver', 'Stalker', 'Lookout', 'Hooker', 'Janitor', 'Framer', 'Saboteur', 'Sniper']
-    def __init__(self, name, email, player_dict=None, dead=False, actions_used=0, doused=0, sabotaged=0, marked=0):
-        super().__init__(name, email, player_dict, dead, actions_used, doused, sabotaged, marked)
+    def __init__(self, name, email, player_dict=None, dead=False, actions_used=0, doused=0, sabotaged=0, marked=0, revealed_mayor=0):
+        super().__init__(name, email, player_dict, dead, actions_used, doused, sabotaged, marked, revealed_mayor)
         self.revealed_role = 'Yakuza'
 
     # Corrupt
@@ -563,8 +564,8 @@ class Witch(Neutral, Two_targeter):
 
 
 class Amnesiac(Neutral):
-    def __init__(self, name, email, player_dict=None, dead=False, actions_used=0, doused=0, sabotaged=0, marked=0):
-        super().__init__(name, email, player_dict, dead, actions_used, doused, sabotaged, marked)
+    def __init__(self, name, email, player_dict=None, dead=False, actions_used=0, doused=0, sabotaged=0, marked=0, revealed_mayor=0):
+        super().__init__(name, email, player_dict, dead, actions_used, doused, sabotaged, marked, revealed_mayor)
         self.remembered_role = 'Amnesiac'
 
     # Remember
@@ -572,7 +573,16 @@ class Amnesiac(Neutral):
         if self.get_target() is None or self.get_target().dead == False or str(type(self.get_target()).__name__) == 'Godfather':
             return
         self.remembered_role = str(type(self.get_target()).__name__)
-        self.add_result('You remembered you were a ' + str(type(self.get_target()).__name__))
+        self.add_result('You remembered you were a ' + self.remembered_role)
+        # Telling the amnesiac the mafia if they remember a non-saboteur mafia role
+        revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper']
+        mafia_names = 'The mafia members are'
+        if self.remembered_role in revealed_mafia_list:
+            for player in self.player_dict:
+                if str(type(player).__name__) in revealed_mafia_list:
+                    mafia_names = mafia_names + ' ' + player.get_name()
+                    player.add_result(self.get_name() + ' joined the mafia as a ' + self.remembered_role)
+            self.add_result(mafia_names)
 
 
 class Survivor(Neutral):

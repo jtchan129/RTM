@@ -20,7 +20,7 @@ Roles.py file contains:
     - Have any unique attributes specific to the role  
     - Defined night actions  
 
-Game.py file contrains:  
+Game.py file contains:  
   - 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game  
   - Functions to interact with the related Google Sheets and the .csv files that they are read into  
   - A function to send emails to players with game updates and results  
@@ -30,4 +30,6 @@ Game.py file contrains:
       - A run_night function that takes the most recent game state and players submitted actions to find the resulting game state and send results to players  
       - A run_voting function that takes the most recent game state and reads the voting Google Sheet to find the resulting game state and send results to players  
       - An assign_new_godfather function that takes the most recent game state and reads the new godfather Google Sheet to set the new godfather
-      - A reveal_mayor function that takes the most recent game state and a player name who wants to reveal themselves as mayor and sends that decision to players
+      - A reveal_mayor function that takes the most recent game state and a player name who wants to reveal themselves as mayor and sends that decision to players  
+Main.py file contains:
+  - A menu to accept input from the user to select which function from Game.py to run

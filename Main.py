@@ -27,6 +27,10 @@ def main():
 
     elif mode == 'new_godfather':
         game.assign_new_godfather()
+
+    elif mode == 'reveal_mayor':
+        mayor_name = input('Which player is revealing as mayor?: ')
+        game.reveal_mayor(mayor_name)
         
     else:
         print("Invalid mode. Choose 'start_game', 'run_night', 'run_voting, or new_godfather")

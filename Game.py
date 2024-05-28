@@ -10,14 +10,14 @@ from email.mime.text import MIMEText
 
 # These are the fields that need to be changed before the start of a game
 #####################################################################################################################
-players_link_id = '1Xx1eEDy7PN5LafDeyJ0hxnFAY9LCWgU6vyC0E9detuU'
-role_distribution_link_id = '1RLU1KegpTHqnU3Si2SLHGI5_XSaZLiP86VOohy9c7NI'
-actions_link_id = '13lOQq90paeseCAJBkM4p-F2mln9_xhCyT1fcF7IGPho'
-voting_link_id = '1P1mEFeEJhPkXKkgFxO6FNVyWyy2p37jMA03VQBvBX8Q'
+players_link_id = '<Your link here>'
+role_distribution_link_id = <Your link here>'
+actions_link_id = '<Your link here>'
+voting_link_id = '<Your link here>'
 newGF_link_id = '1rVmFK2hs9-VrTkXetdD_IKtnbygOd7TMU5acCGALFxg'
 
-google_API_credentials_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/studious-sign-261101-640910fb478b.json'
-mod_email_app_password_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/mod_email_app_password.csv'
+google_API_credentials_path = '<Your path here>'
+mod_email_app_password_path = '<Your path here>'
 #####################################################################################################################
 
 # Takes a Google Sheets file ID and a name for the .csv file the data will be saved to

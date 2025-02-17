@@ -10,14 +10,14 @@ from email.mime.text import MIMEText
 
 # These are the fields that need to be changed before the start of a game
 #####################################################################################################################
-players_link_id = '<Your link here>'
-role_distribution_link_id = <Your link here>'
-actions_link_id = '<Your link here>'
-voting_link_id = '<Your link here>'
-newGF_link_id = '1rVmFK2hs9-VrTkXetdD_IKtnbygOd7TMU5acCGALFxg'
+players_link_id = '1LV_J9mO-G0OM0IX3KtyqdMZIve2sXKhkX0GGnbgd_PM'
+role_distribution_link_id = '17Zpzuhj66qn3M-WkhbAxPM7MvA7kbDrNmkuWRmOcYYY'
+actions_link_id = '183z7zMYA6E4IS_VOEqzlmTFTFcUkDpm4Enq1ABNzCpo'
+voting_link_id = '1ykNKah-Xz0b_sXV27TpSIuQpksi5naFDdGe2g9ixoGU'
+newGF_link_id = '1-9GQZIG5oo4xTqQYhgAZ8iK9a96CNvCqoAKFmPE2wHM'
 
-google_API_credentials_path = '<Your path here>'
-mod_email_app_password_path = '<Your path here>'
+google_API_credentials_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/studious-sign-261101-640910fb478b.json'
+mod_email_app_password_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/mod_email_app_password.csv'
 #####################################################################################################################
 
 # Takes a Google Sheets file ID and a name for the .csv file the data will be saved to
@@ -40,8 +40,18 @@ def update_file(dataframe, worksheet):
 
 # Remove all data besides headers from a sheet
 def clear_data(worksheet):
+    # Ask the user for confirmation
+    if confirm:
+        print(f'Message text:\n{message_text}')
+        
+        send_confirmation = input('Would you like to clear the actions sheet? (yes/no): ').strip().lower()
+        
+        if send_confirmation != 'yes':
+            print('Sheet not cleared')
+            return
     worksheet.resize(rows=1)
     worksheet.resize(rows=150)
+    print('Sheet cleared')
 
 # Mode should be 'night'. 'day', or newGF
 def find_last_file(mode):
@@ -62,7 +72,21 @@ def find_last_file(mode):
         print('Something went wrong in finding a file')
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
-def send_email(receiver_email, message_text_list, subject):
+def send_email(receiver_email, message_text_list, subject, confirm = False):
+    message_text = ''
+    for text in message_text_list:
+        message_text = message_text + ' ' + text
+
+    # Ask the user for confirmation
+    if confirm:
+        print(f'Message text:\n{message_text}')
+        
+        send_confirmation = input('Would you like to send the email? (yes/no): ').strip().lower()
+        
+        if send_confirmation != 'yes':
+            print('Email not sent')
+            return
+    
     dataframe = pd.read_csv(mod_email_app_password_path)
     sender_email = dataframe.loc[0, 'email']
     sender_app_password = dataframe.loc[0, 'app_password']
@@ -71,18 +95,14 @@ def send_email(receiver_email, message_text_list, subject):
     smtpserver.ehlo()
     smtpserver.login(sender_email, sender_app_password)
 
-    message_text = ''
-    for text in message_text_list:
-        message_text = message_text + ' ' + text
-
     # Create MIMEText object
-    message = MIMEText(message_text, "plain")
-    message["Subject"] = subject
-    message["From"] = sender_email
+    message = MIMEText(message_text, 'plain')
+    message['Subject'] = subject
+    message['From'] = sender_email
 
     # Join emails if sending to mutiple
     if isinstance(receiver_email, str):
-        message["To"] = receiver_email
+        message['To'] = receiver_email
     elif isinstance(receiver_email, list):
         message['To'] = ', '.join(receiver_email)
 
@@ -129,8 +149,6 @@ class Game:
                        'Saboteur': 1,}
         
         role_assignments_list = []
-
-        print(role_dist_df)
         
         for index, row in role_dist_df.iterrows():
             if row['Role Distribution Category'] is not None:
@@ -234,11 +252,11 @@ class Game:
         # Update number of actions used
         self.update_state_file()
 
+        # Send email to everyone with public result
+        send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' results', confirm = True)
+        
         # Clear the actions spreadsheet
         clear_data(actions_worksheet)
-
-        # Send email to everyone with public result
-        send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' results')
 
 
     def run_voting(self):

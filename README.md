@@ -77,3 +77,4 @@ Make sure there is a google form for players to submit their actions with the sa
 
 ### Updates Needed
  - Does not check for the requirement of framer needing a cop to be in the game
+ - The new godfather google sheet is not automatically sent out which will be a problem if there is no moderator

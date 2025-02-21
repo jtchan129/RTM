@@ -74,3 +74,6 @@ Make sure there is a google form for players to submit their actions with the sa
 - Run run_voting after votes are in each day  
 - Run new_godfather right before voting if there is no godfather (make sure the mafia knows they need to fill out the corresponding sheet)  
 - Run reveal_mayor whenever someone messages you they want to reveal as a mayor  
+
+### Updates Needed
+ - Does not check for the requirement of framer needing a cop to be in the game

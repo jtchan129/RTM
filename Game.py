@@ -124,10 +124,9 @@ class Game:
         self.player_dict = {}
         self.public_result = ''
 
-    # start_game, run_night, and run_voting are independent of each other: They are never run on the same game object they individually interact with the game_state.csv file
-    def start_game(self):
-        # Load file of player names, emails and role distribution from google drive
-        state_df, state_worksheet = pull_data(players_link_id, 'game_state0_day0.csv')
+    # ranodmize_roles, assign_roles, run_night, and run_voting are independent of each other: They are never run on the same game object they individually interact with the game_state.csv file
+    def randomize_roles(self):
+        # Load role distribution from google drive
         role_dist_df, role_dist_worksheet = pull_data(role_distribution_link_id, 'role_distribution.csv')
 
         # Randomly select role distribution based on categories
@@ -146,7 +145,10 @@ class Game:
         unique_dict = {'Bomb': 1,
                        'Mayor': 1,
                        'Bus_driver': 1,
-                       'Saboteur': 1,}
+                       'Limo_driver': 1,
+                       'Sniper': 1,
+                       'Saboteur': 1,
+                       "Amnesiac": 1}
         
         role_assignments_list = []
         
@@ -181,7 +183,14 @@ class Game:
                 role_dist_df.loc[index, 'Actual Role Distribution'] = assigned_role
                 role_assignments_list.append(assigned_role)
 
-        # Add new columns for the night each player died, the number of times they have used their action, whether they are doused, whether they are sabotaged, and whether they are marked for death
+        role_dist_df.to_csv('role_distribution.csv', index=False)
+        update_file(role_dist_df, role_dist_worksheet)
+
+    def assign_roles(self):
+        state_df, state_worksheet = pull_data(players_link_id, 'game_state0_day0.csv')
+        role_dist_df, _ = pull_data(role_distribution_link_id, 'role_distribution.csv')
+        role_assignments_list = role_dist_df['Actual Role Distribution'].tolist()
+        
         state_df['Time died'] = 'Alive'
         state_df['Actions used'] = 0
         state_df['Doused'] = 0
@@ -207,17 +216,10 @@ class Game:
                 mafia_names.append(row['Name'])
         mafia_subject = 'Mafia members'
         send_email(mafia_emails, mafia_names, mafia_subject)
-        
-        # Save the game state to be accessed later
+
+        # Saving roles in csv and Google Sheets
         state_df.to_csv('game_state0_day0.csv', index=False)
-
-        # Reupload the updated files to Google Drive
-        upload_state_df = state_df[['Name', 'Email', 'Role']]
-        update_file(upload_state_df, state_worksheet)
-
-        upload_role_dist_df = role_dist_df
-        update_file(upload_role_dist_df, role_dist_worksheet)
-
+        update_file(state_df[['Name', 'Email', 'Role']], state_worksheet)
 
     def run_night(self):
         # Find most recent game state number, game state number, and night number and set accordingly

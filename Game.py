@@ -186,6 +186,7 @@ class Game:
         role_dist_df.to_csv('role_distribution.csv', index=False)
         update_file(role_dist_df, role_dist_worksheet)
 
+    # Assign players roles based on the role distribution
     def assign_roles(self):
         state_df, state_worksheet = pull_data(players_link_id, 'game_state0_day0.csv')
         role_dist_df, _ = pull_data(role_distribution_link_id, 'role_distribution.csv')
@@ -203,7 +204,14 @@ class Game:
         for index, row in state_df.iterrows():
             state_df.loc[index, 'Role'] = role_assignments_list[index]
 
-        # Send emails informing people of their roles
+        # Saving roles in csv and Google Sheets
+        state_df.to_csv('game_state0_day0.csv', index=False)
+        update_file(state_df[['Name', 'Email', 'Role']], state_worksheet)
+
+    # Send emails informing people of their roles
+    def email_roles(self):
+        state_df, _ = pull_data(players_link_id, 'game_state0_day0.csv')
+        
         revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper']
         mafia_emails = []
         mafia_names = ['The mafia members are']
@@ -217,9 +225,15 @@ class Game:
         mafia_subject = 'Mafia members'
         send_email(mafia_emails, mafia_names, mafia_subject)
 
-        # Saving roles in csv and Google Sheets
+        state_df['Time died'] = 'Alive'
+        state_df['Actions used'] = 0
+        state_df['Doused'] = 0
+        state_df['Sabotaged'] = 0
+        state_df['Marked'] = 0
+        state_df['Revealed Mayor'] = 0
+
+        # Saving roles to csv again in case they were manually changed in the Google sheet
         state_df.to_csv('game_state0_day0.csv', index=False)
-        update_file(state_df[['Name', 'Email', 'Role']], state_worksheet)
 
     def run_night(self):
         # Find most recent game state number, game state number, and night number and set accordingly

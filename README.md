@@ -26,7 +26,8 @@ Game.py file contains:
   - A function to send emails to players with game updates and results  
   - A Game class which contains:  
       - Attributes used within the function in the class  
-      - A start_game function to only be run at the start of the game that randomly assigns roles to the players  
+      - A randomize_roles function to only be run at the start of the game that randomly designated roles based on the given distribution
+      - An assign_roles function to only be run at the start of the game that randomly assigns roles to players and emails them 
       - A run_night function that takes the most recent game state and players submitted actions to find the resulting game state and send results to players  
       - A run_voting function that takes the most recent game state and reads the voting Google Sheet to find the resulting game state and send results to players  
       - An assign_new_godfather function that takes the most recent game state and reads the new godfather Google Sheet to set the new godfather

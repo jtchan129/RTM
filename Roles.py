@@ -353,7 +353,6 @@ class Bomb(Town):
             for attacker in self.attacked_by:
                 self.attack(attacker)
 
-# Might not work with self target correctly
 class Bodyguard(Town):
     is_lethal = True
     attack_level = 2
@@ -425,7 +424,7 @@ class Janitor(Mafia):
         self.get_target().cleaned = True
 
     # Give janitor the role of cleaned person
-    @check_target
+    @check_target_no_increment
     def end_action(self):
         if self.get_target().died_tonight == True:
             self.add_result('You cleaned ' + self.get_target().get_name() + ' and their role was ' + str(type(self.get_target()).__name__))

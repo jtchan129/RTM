@@ -39,11 +39,9 @@ def update_file(dataframe, worksheet):
     worksheet.update([dataframe.columns.values.tolist()] + dataframe.values.tolist())
 
 # Remove all data besides headers from a sheet
-def clear_data(worksheet):
+def clear_data(worksheet, confirm=False):
     # Ask the user for confirmation
     if confirm:
-        print(f'Message text:\n{message_text}')
-        
         send_confirmation = input('Would you like to clear the actions sheet? (yes/no): ').strip().lower()
         
         if send_confirmation != 'yes':
@@ -134,12 +132,12 @@ class Game:
         town_killing_list = ['Vigilante', 'Bodyguard', 'Veteran', 'Bomb']
         town_support_list = ['Mayor', 'Bus_driver', 'Escort', 'Doctor']
         town_random_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor']
-        mafia_list = ['Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur']
+        mafia_list = ['Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur']
         neutral_list = ['Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
         # Used to assign specific roles
-        full_roles_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor', 'Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur', 'Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
+        full_roles_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor', 'Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur', 'Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
         # Used in removing unique roles
-        role_lists_list = [town_investigative_list, town_killing_list, town_support_list, mafia_list, neutral_list]
+        role_lists_list = [town_investigative_list, town_killing_list, town_support_list, town_random_list, mafia_list, neutral_list, full_roles_list]
 
         # This can be expanded later to put limits on the number of each role in the game
         unique_dict = {'Bomb': 1,
@@ -212,7 +210,7 @@ class Game:
     def email_roles(self):
         state_df, _ = pull_data(players_link_id, 'game_state0_day0.csv')
         
-        revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo Driver', 'Hooker', 'Stalker', 'Sniper']
+        revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper']
         mafia_emails = []
         mafia_names = ['The mafia members are']
         for index, row in state_df.iterrows():
@@ -246,6 +244,12 @@ class Game:
 
         # Load file of night actions from google drive
         self.actions_df, actions_worksheet = pull_data(actions_link_id, 'actions_night' + str(self.night_num) + '.csv')
+
+        # Taking only the most recent action for each player
+        self.actions_df['Timestamp'] = pd.to_datetime(self.actions_df['Timestamp'])
+        self.actions_df = self.actions_df.sort_values(by='Timestamp').drop_duplicates(subset=['Player'], keep='last')
+
+        self.actions_df.to_csv('actions_night' + str(self.night_num) + '.csv', index=False)
 
         # Creating set of play objects
         self.create_players()

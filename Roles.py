@@ -278,14 +278,15 @@ class Cop(Town):
 
 
 class Doctor(Town):
-    number_actions = 1
-
     # Give defence
-    @check_target
+    @check_target_no_increment
     def perform_action(self):
-        if self.get_target() == self and self.actions_used < self.number_actions:
+        # Temporary solution. Will only increment actions_used if self targeted and will prevent self targeting after that
+        if self.get_target() == self and self.actions_used < 1:
             self.get_target().defence_level = 1
-        self.get_target().defence_level = 1
+            self.actions_used += 1
+        elif self.get_target() != self:
+            self.get_target().defence_level = 1
 
     # Create messages
     @check_target_no_increment
@@ -428,6 +429,8 @@ class Janitor(Mafia):
     def end_action(self):
         if self.get_target().died_tonight == True:
             self.add_result('You cleaned ' + self.get_target().get_name() + ' and their role was ' + str(type(self.get_target()).__name__))
+        else:
+            self.actions_used -= 1
 
 
 class Framer(Mafia):

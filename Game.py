@@ -247,8 +247,7 @@ class Game:
 
         # Taking only the most recent action for each player
         self.actions_df['Timestamp'] = pd.to_datetime(self.actions_df['Timestamp'])
-        self.actions_df = self.actions_df.sort_values(by='Timestamp').drop_duplicates(subset=['Player'], keep='last')
-
+        self.actions_df = self.actions_df.sort_values(by='Timestamp').drop_duplicates(subset=['Name'], keep='last')
         self.actions_df.to_csv('actions_night' + str(self.night_num) + '.csv', index=False)
 
         # Creating set of play objects
@@ -297,6 +296,12 @@ class Game:
 
         self.voting_df = self.voting_df[['Voting Player', day_column_name]]
 
+        # Making voting non-case sensitive
+        self.state_df['Name'] = self.state_df['Name'].str.lower()
+
+        self.voting_df['Voting Player'] = self.voting_df['Voting Player'].str.lower()
+        self.voting_df[day_column_name] = self.voting_df[day_column_name].str.lower()
+
         # Set any non-valid votes to blank
         for index, row in self.voting_df.iterrows():
             voting_player_alive = (row['Voting Player'] in self.state_df.loc[self.state_df['Time died'] == 'Alive', 'Name'].values)
@@ -310,7 +315,7 @@ class Game:
         # Creating a dictionary to count votes
         voting_keys = list(self.state_df['Name'])
         voting_dict = {key: 0 for key in voting_keys}
-        voting_dict['No vote'] = 0
+        voting_dict['no vote'] = 0
 
         for _, row in valid_votes_df.iterrows():
             if self.state_df.loc[self.state_df['Name'] == row['Voting Player'], 'Revealed Mayor'].values == 1:
@@ -333,9 +338,9 @@ class Game:
                 if num_votes == vote_counts[0]:
                     most_voted = voted_player
             # Getting voted player's role
-            most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role']
+            most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role'].values[0]
 
-            if most_voted == 'No vote':
+            if most_voted == 'no vote':
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
             else:
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to execute ' + most_voted + ' the ' + most_voted_role
@@ -367,7 +372,7 @@ class Game:
         # Load the last game state file
         self.state_df = pd.read_csv(last_state_file)
 
-        newGF_df = pull_data(newGF_link_id, 'newGF' + str(newGF_num) + '.csv')
+        newGF_df, _ = pull_data(newGF_link_id, 'newGF' + str(newGF_num) + '.csv')
         newGF_name = newGF_df.loc[0, 'New godfather']
 
         player_index = self.state_df[self.state_df['Name'] == newGF_name].index
@@ -377,6 +382,11 @@ class Game:
         if self.state_df.loc[player_index, 'Role'].values[0] in newGF_mafia_list:
             self.state_df.loc[player_index, 'Role'] = 'Godfather'
             self.state_df.to_csv('game_state' + str(self.state_num) + '_newGF' + str(newGF_num) + '.csv', index=False)
+            # Sending email
+            newGF_email = self.state_df.loc[player_index[0], 'Email']
+            subject = "You Are the New Godfather"
+            message_text_list = ["You have been chosen as the new Godfather."]
+            send_email(newGF_email, message_text_list, subject)
 
     
     def reveal_mayor(self, mayor_name):

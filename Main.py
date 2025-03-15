@@ -2,20 +2,24 @@ import sys
 from Game import *
 
 
-
-
 def main():
     game = Game()
 
     if len(sys.argv) != 2:
         print("Usage: python main.py <mode>")
-        print("<mode> should be 'start_game', 'run_night', 'run_voting, or new_godfather")
+        print("<mode> should be 'randomize_roles', 'assign_roles', 'email_roles', 'run_night', 'run_voting, or new_godfather")
         sys.exit(1)
     mode = sys.argv[1]
 
     # Only need to run a single time at the beginning of the game
-    if mode == 'start_game':
-        game.start_game()
+    if mode == 'randomize_roles':
+        game.randomize_roles()
+
+    elif mode == 'assign_roles':
+        game.assign_roles()
+
+    elif mode == 'email_roles':
+        game.email_roles()
 
     # Run this each night
     elif mode == 'run_night':
@@ -33,10 +37,8 @@ def main():
         game.reveal_mayor(mayor_name)
         
     else:
-        print("Invalid mode. Choose 'start_game', 'run_night', 'run_voting, or new_godfather")
+        print("Invalid mode. Choose 'randomize_roles', 'assign_roles', 'email_roles', 'run_night', 'run_voting, or new_godfather")
         sys.exit(1)
-
-
 
 
 

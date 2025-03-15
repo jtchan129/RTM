@@ -37,6 +37,7 @@ Main.py file contains:
   - A menu to accept input from the user to select which function from Game.py to run
 
 ### Google Sheet Setup
+The service account email needs to have editor permission on each google sheet (The email in the json next to "client_email:"
 The associated Google Sheets should be formatted as follows:
 Players file:
 | Name         | Email          | Role          |

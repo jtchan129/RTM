@@ -560,6 +560,9 @@ class Witch(Neutral, Two_targeter):
             self.get_target().select_target(self.get_target2())
             self.add_result('You controlled ' + self.get_target().get_name() + ' to ' + self.get_target2().get_name())
             self.get_target().add_result('You were controlled')
+        else:
+            self.add_result('You attempted to control ' + self.get_target().get_name() + ' but they were immune')
+            self.get_target().add_result('Someone attempted to control you but you are immune')
         # Removing second target to not be seen by watcher
         if self.get_target():
             self.player_dict[self] = [self.player_dict[self][0]]

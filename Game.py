@@ -10,14 +10,14 @@ from email.mime.text import MIMEText
 
 # These are the fields that need to be changed before the start of a game
 #####################################################################################################################
-players_link_id = '1LV_J9mO-G0OM0IX3KtyqdMZIve2sXKhkX0GGnbgd_PM'
-role_distribution_link_id = '17Zpzuhj66qn3M-WkhbAxPM7MvA7kbDrNmkuWRmOcYYY'
-actions_link_id = '183z7zMYA6E4IS_VOEqzlmTFTFcUkDpm4Enq1ABNzCpo'
-voting_link_id = '1ykNKah-Xz0b_sXV27TpSIuQpksi5naFDdGe2g9ixoGU'
-newGF_link_id = '1-9GQZIG5oo4xTqQYhgAZ8iK9a96CNvCqoAKFmPE2wHM'
+players_link_id = '1q-C1SNAMmPUx__y5gxaviZFv1e-BiMeUH9TQUxmvxmE'
+role_distribution_link_id = '1tGCLbzXLsFyG4JRi0D2SRUeCFSLCN5IeUXZzHj-BCC4'
+actions_link_id = '1qZfl1y6T73z_AKxu_1WhrR0Q1AgfvttBSzqOMVwvJiI'
+voting_link_id = '1rdUudou9gnQO_P-dYSss-Sp8lCxWZPpLx-S-Bnko2UM'
+newGF_link_id = '1eFGj0u9iAy7FBw0lMS96sdWwobCyrHaAZ21prVnbO88'
 
-google_API_credentials_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/studious-sign-261101-640910fb478b.json'
-mod_email_app_password_path = 'C:/Users/jtcle/Desktop/Independent Python/RTM/mod_email_app_password.csv'
+google_API_credentials_path = 'real-time-mafia-175d61ce3729.json'
+mod_email_app_password_path = 'mod_email_app_password.csv'
 #####################################################################################################################
 
 # Takes a Google Sheets file ID and a name for the .csv file the data will be saved to
@@ -212,16 +212,19 @@ class Game:
         
         revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper']
         mafia_emails = []
-        mafia_names = ['The mafia members are']
+        mafia_message = ['The mafia members are']
         for index, row in state_df.iterrows():
             email_message = 'Your role is ' + row['Role']
             email_subject = 'RTM Role Assignments'
             send_email(row['Email'], email_message, email_subject)
             if row['Role'] in revealed_mafia_list:
                 mafia_emails.append(row['Email'])
-                mafia_names.append(row['Name'])
+                mafia_message.append(row['Name'])
+                
+        gf_sheet_link = f"https://docs.google.com/spreadsheets/d/{newGF_link_id}"
+        mafia_message.append(f"\n\nThe new Godfather Google Sheet is: {gf_sheet_link}")
         mafia_subject = 'Mafia members'
-        send_email(mafia_emails, mafia_names, mafia_subject)
+        send_email(mafia_emails, mafia_message, mafia_subject)
 
         state_df['Time died'] = 'Alive'
         state_df['Actions used'] = 0
@@ -297,10 +300,10 @@ class Game:
         self.voting_df = self.voting_df[['Voting Player', day_column_name]]
 
         # Making voting non-case sensitive
-        self.state_df['Name'] = self.state_df['Name'].str.lower()
+        # self.state_df['Name'] = self.state_df['Name'].str.lower()
 
-        self.voting_df['Voting Player'] = self.voting_df['Voting Player'].str.lower()
-        self.voting_df[day_column_name] = self.voting_df[day_column_name].str.lower()
+        # self.voting_df['Voting Player'] = self.voting_df['Voting Player'].str.lower()
+        # self.voting_df[day_column_name] = self.voting_df[day_column_name].str.lower()
 
         # Set any non-valid votes to blank
         for index, row in self.voting_df.iterrows():
@@ -315,7 +318,7 @@ class Game:
         # Creating a dictionary to count votes
         voting_keys = list(self.state_df['Name'])
         voting_dict = {key: 0 for key in voting_keys}
-        voting_dict['no vote'] = 0
+        voting_dict['No vote'] = 0
 
         for _, row in valid_votes_df.iterrows():
             if self.state_df.loc[self.state_df['Name'] == row['Voting Player'], 'Revealed Mayor'].values == 1:
@@ -340,7 +343,7 @@ class Game:
             # Getting voted player's role
             most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role'].values[0]
 
-            if most_voted == 'no vote':
+            if most_voted == 'No vote':
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
             else:
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to execute ' + most_voted + ' the ' + most_voted_role
@@ -359,7 +362,7 @@ class Game:
                         jester_target_index = self.state_df[self.state_df['Name'] == jester_target_name].index
                         self.state_df.loc[jester_target_index, 'Marked'] = 1
 
-        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results')
+        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results', confirm=True)
 
         self.state_df.to_csv('game_state' + str(self.state_num) + '_day' + str(day_num) + '.csv', index=False)
 

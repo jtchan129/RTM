@@ -2,10 +2,11 @@
 ### Automated moderation of real-time mafia  
 The program contains 3 Python files, and a blank actions csv file.  
 
-~~It also ~~requires setting up a Google Drive API in order to pull data from Google Sheets (needed for player data, role assignments, night actions, voting, and assigning new godfathers). Will need a .json file with credentials to use the API. (https://docs.gspread.org/en/latest/oauth2.html to set up Google Drive API)  
+Ask the previous mod for the mod email and password along with the mod email related files
+No longer needed: (It also requires setting up a Google Drive API in order to pull data from Google Sheets (needed for player data, role assignments, night actions, voting, and assigning new godfathers). Will need a .json file with credentials to use the API. (https://docs.gspread.org/en/latest/oauth2.html to set up Google Drive API)  
 
 Additionally requires setting up 2-factor authentication and an app password with a Gmail account in order to automate emails. I store Gmail username and app password in a mod_email_app_password.csv file with headers of "email", and "app_password" and data in their respective columns. (Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/)  
-In Game.py there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.
+In Game.py there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.)
 
 Roles.py file contains:  
   - Wrappers to ensure proper targeting by players  

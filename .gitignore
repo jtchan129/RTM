@@ -3,7 +3,4 @@ real-time-mafia-175d61ce3729.json
 mod_email_app_password.csv
 
 # Game Data folder only saved to moderator's local environment
-Game\ Data/*
-
-# Keeping a placeholder folder to show folder structure in Github
-!Game\ Data/.gitkeep
+Game Data/*

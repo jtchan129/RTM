@@ -20,6 +20,10 @@ google_API_credentials_path = 'real-time-mafia-175d61ce3729.json'
 mod_email_app_password_path = 'mod_email_app_password.csv'
 #####################################################################################################################
 
+# Folder to hold game states and the role distribution csv files
+DATA_DIR = os.path.join(os.path.dirname(__file__), "Game Data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
 # Takes a Google Sheets file ID and a name for the .csv file the data will be saved to
 # Taken and adapted from https://docs.gspread.org/en/latest/oauth2.html and https://docs.gspread.org/en/latest/user-guide.html#using-gspread-with-pandas
 def pull_data(file_id, file_name):
@@ -30,7 +34,8 @@ def pull_data(file_id, file_name):
 
     dataframe = pd.DataFrame(worksheet.get_all_records())
 
-    dataframe.to_csv(file_name, index=False)
+    if file_name != None:
+        dataframe.to_csv(file_name, index=False)
 
     return dataframe, worksheet
 
@@ -51,23 +56,32 @@ def clear_data(worksheet, confirm=False):
     worksheet.resize(rows=150)
     print('Sheet cleared')
 
-# Mode should be 'night'. 'day', or newGF
+# Mode should be 'night'. 'day', 'newGF', or 'reveal', if mode = None then it will get the overall most recent state
 def find_last_file(mode):
-    time_files = [file for file in os.listdir() if file.startswith('game_state') and f'{mode}' in file and file.endswith('.csv')]
-    time_numbers = [int(f.split(mode)[-1].split('.csv')[0]) for f in time_files]
-
-    files = [file for file in os.listdir() if file.startswith('game_state') and file.endswith('.csv')]
-    numbers = [int(f.split('state')[-1].split('_', 2)[0]) for f in files]
-    if numbers and time_numbers:
-        max_index = numbers.index(max(numbers))
-        return max(numbers), files[max_index], max(time_numbers)
-    elif numbers:
-        max_index = numbers.index(max(numbers))
-        return max(numbers), files[max_index], 0
-    elif time_numbers:
-        return 0, None, max(time_numbers)
+    if not os.path.isdir(DATA_DIR):
+        files = []
     else:
-        print('Something went wrong in finding a file')
+        files = [f for f in os.listdir(DATA_DIR) if f.startswith('game_state') and f.endswith('.csv')]
+    if not files:
+        return 0, None, 0
+
+    # Filtering by files of type {mode} if specified
+    if mode:
+        mode_files = [f for f in files if mode in f]
+        if not mode_files:
+            last_mode_num = 0
+        else:
+            last_mode_num = max([int(f.split(mode)[-1].split('.csv')[0]) for f in mode_files])
+    else:
+        last_mode_num = 0
+
+    # Getting state numbers
+    state_numbers = [int(f.split('state')[-1].split('_', 2)[0]) for f in files]
+    last_state_num = max(state_numbers)
+    last_state_file = files[state_numbers.index(last_state_num)]
+
+    return last_state_num, last_state_file, last_mode_num
+
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
 def send_email(receiver_email, message_text_list, subject, confirm = False):
@@ -121,12 +135,11 @@ class Game:
         self.voting_df = None
         self.player_dict = {}
         self.public_result = ''
+        self.night_preview_df = None
+        self.night_public_result_preview = None
 
     # ranodmize_roles, assign_roles, run_night, and run_voting are independent of each other: They are never run on the same game object they individually interact with the game_state.csv file
-    def randomize_roles(self):
-        # Load role distribution from google drive
-        role_dist_df, role_dist_worksheet = pull_data(role_distribution_link_id, 'role_distribution.csv')
-
+    def randomize_roles(self, role_dist_df):
         # Randomly select role distribution based on categories
         town_investigative_list = ['Detective', 'Cop', 'Tracker', 'Watcher']
         town_killing_list = ['Vigilante', 'Bodyguard', 'Veteran', 'Bomb']
@@ -147,8 +160,6 @@ class Game:
                        'Sniper': 1,
                        'Saboteur': 1,
                        "Amnesiac": 1}
-        
-        role_assignments_list = []
         
         for index, row in role_dist_df.iterrows():
             if row['Role Distribution Category'] is not None:
@@ -179,15 +190,15 @@ class Game:
                                 role_list.remove(unique_role)
 
                 role_dist_df.loc[index, 'Actual Role Distribution'] = assigned_role
-                role_assignments_list.append(assigned_role)
 
-        role_dist_df.to_csv('role_distribution.csv', index=False)
-        update_file(role_dist_df, role_dist_worksheet)
+        # Return the final df of role categories and actual roles
+        return role_dist_df
 
+    # CURRENTLY UNUSED IN STREAMLIT APP
     # Assign players roles based on the role distribution
     def assign_roles(self):
-        state_df, state_worksheet = pull_data(players_link_id, 'game_state0_day0.csv')
-        role_dist_df, _ = pull_data(role_distribution_link_id, 'role_distribution.csv')
+        state_df, state_worksheet = pull_data(players_link_id, os.path.join(DATA_DIR, 'game_state0_day0.csv'))
+        role_dist_df, _ = pull_data(role_distribution_link_id, os.path.join(DATA_DIR, 'role_distribution.csv'))
         role_assignments_list = role_dist_df['Actual Role Distribution'].tolist()
         
         state_df['Time died'] = 'Alive'
@@ -202,13 +213,17 @@ class Game:
         for index, row in state_df.iterrows():
             state_df.loc[index, 'Role'] = role_assignments_list[index]
 
-        # Saving roles in csv and Google Sheets
-        state_df.to_csv('game_state0_day0.csv', index=False)
-        update_file(state_df[['Name', 'Email', 'Role']], state_worksheet)
+        # # Saving roles in csv and Google Sheets
+        # state_df.to_csv('game_state0_day0.csv', index=False)
+        # update_file(state_df[['Name', 'Email', 'Role']], state_worksheet)
+
+        # Update self.state_df for the streamllit
+        self.state_df = state_df
+
 
     # Send emails informing people of their roles
     def email_roles(self):
-        state_df, _ = pull_data(players_link_id, 'game_state0_day0.csv')
+        state_df, _ = pull_data(players_link_id, os.path.join(DATA_DIR, 'game_state0_day0.csv'))
         
         revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper']
         mafia_emails = []
@@ -234,24 +249,69 @@ class Game:
         state_df['Revealed Mayor'] = 0
 
         # Saving roles to csv again in case they were manually changed in the Google sheet
-        state_df.to_csv('game_state0_day0.csv', index=False)
+        state_df.to_csv(os.path.join(DATA_DIR, 'game_state0_day0.csv'), index=False)
 
-    def run_night(self):
+
+    # Preview emails informing people of their roles
+    def email_roles_preview(self):
+        state_df = pd.read_csv(os.path.join(DATA_DIR, 'game_state0_day0.csv'))
+        
+        revealed_mafia_list = ['Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper']
+
+        email_data = []
+        mafia_emails = []
+        mafia_names = []
+
+        # Each players role
+        for _, row in state_df.iterrows():
+            message = f"Your role is {row['Role']}"
+            subject = "RTM Role Assignments"
+            email_data.append({
+                "Name": row["Name"],
+                "Email": row["Email"],
+                "Role": row["Role"],
+                "Email Preview": message,
+                "Email Subject": subject
+            })
+
+            if row["Role"] in revealed_mafia_list:
+                mafia_emails.append(row["Email"])
+                mafia_names.append(row["Name"])
+                
+        gf_sheet_link = f"https://docs.google.com/spreadsheets/d/{newGF_link_id}"
+
+        mafia_message = (
+            f"The mafia members are: {', '.join(mafia_names)}"
+            f"\n\nThe new Godfather Google Sheet is: {gf_sheet_link}"
+        )
+        # Mafia group email
+        email_data.append({
+            "Name": "All Mafia Members",
+            "Email": ", ".join(mafia_emails),
+            "Role": "Mafia Coordination",
+            "Email Preview": mafia_message,
+            "Email Subject": "Mafia members"
+        })
+
+        return pd.DataFrame(email_data)
+
+
+    def run_night(self, preview_only=True):
         # Find most recent game state number, game state number, and night number and set accordingly
         last_state_num, last_state_file, last_night_num = find_last_file('night')
         self.state_num = last_state_num + 1
         self.night_num =  last_night_num + 1
 
         # Load last game state file
-        self.state_df = pd.read_csv(last_state_file)
+        self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
         # Load file of night actions from google drive
-        self.actions_df, actions_worksheet = pull_data(actions_link_id, 'actions_night' + str(self.night_num) + '.csv')
+        self.actions_df, actions_worksheet = pull_data(actions_link_id, os.path.join(DATA_DIR, 'actions_night' + str(self.night_num) + '.csv'))
 
         # Taking only the most recent action for each player
         self.actions_df['Timestamp'] = pd.to_datetime(self.actions_df['Timestamp'])
         self.actions_df = self.actions_df.sort_values(by='Timestamp').drop_duplicates(subset=['Name'], keep='last')
-        self.actions_df.to_csv('actions_night' + str(self.night_num) + '.csv', index=False)
+        self.actions_df.to_csv(os.path.join(DATA_DIR, f'actions_night{self.night_num}.csv'), index=False)
 
         # Creating set of play objects
         self.create_players()
@@ -265,21 +325,30 @@ class Game:
         # Run actions in priority order
         self.run_actions()
 
-        # Send emails for each player's results
-        self.email_results()
-
         # Process deaths
         self.process_deaths()
 
-        # Update number of actions used
+        # Creating preview data
+        email_data = []
+        for player in self.player_dict.keys():
+            result_msg = player.get_results()
+            email_data.append({
+                "Name": player.get_name(),
+                "Email": player.get_email(),
+                "Results Preview": result_msg
+            })
+        preview_df = pd.DataFrame(email_data)
+
+        # If preview_only, return preview and exit without modifying files or sending emails
+        if preview_only:
+            return preview_df
+
+        # If not preview_only, send emails, clear actions, and update state file
+        self.email_results()
+        clear_data(actions_worksheet)
         self.update_state_file()
 
-        # Send email to everyone with public result
-        send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' results', confirm = True)
-        
-        # Clear the actions spreadsheet
-        clear_data(actions_worksheet)
-
+        return None
 
     def run_voting(self):
         # Find most recent game state number, game state file name, and day number and set accordingly
@@ -290,12 +359,12 @@ class Game:
         day_column_name = 'Day ' + str(day_num)
 
         # Load the last game state file
-        self.state_df = pd.read_csv(last_state_file)
+        self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
         # Create the group email to send public results
         self.create_rtm_group_email()
 
-        self.voting_df, voting_worksheet = pull_data(voting_link_id, 'voting_day' + str(day_num) + '.csv')
+        self.voting_df, voting_worksheet = pull_data(voting_link_id, os.path.join(DATA_DIR, 'voting_day' + str(day_num) + '.csv'))
 
         self.voting_df = self.voting_df[['Voting Player', day_column_name]]
 
@@ -364,7 +433,9 @@ class Game:
 
         send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results', confirm=True)
 
-        self.state_df.to_csv('game_state' + str(self.state_num) + '_day' + str(day_num) + '.csv', index=False)
+        # Saving
+        filename = f'game_state{self.state_num}_day{day_num}.csv'
+        self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
 
 
     def assign_new_godfather(self):
@@ -373,7 +444,7 @@ class Game:
         newGF_num = last_newGF_num + 1
 
         # Load the last game state file
-        self.state_df = pd.read_csv(last_state_file)
+        self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
         newGF_df, _ = pull_data(newGF_link_id, 'newGF' + str(newGF_num) + '.csv')
         newGF_name = newGF_df.loc[0, 'New godfather']
@@ -384,7 +455,8 @@ class Game:
 
         if self.state_df.loc[player_index, 'Role'].values[0] in newGF_mafia_list:
             self.state_df.loc[player_index, 'Role'] = 'Godfather'
-            self.state_df.to_csv('game_state' + str(self.state_num) + '_newGF' + str(newGF_num) + '.csv', index=False)
+            filename = f'game_state{self.state_num}_newGF{newGF_num}.csv'
+            self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
             # Sending email
             newGF_email = self.state_df.loc[player_index[0], 'Email']
             subject = "You Are the New Godfather"
@@ -398,7 +470,7 @@ class Game:
         reveal_num = last_reveal_num + 1
 
         # Load the last game state file
-        self.state_df = pd.read_csv(last_state_file)
+        self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
         self.create_rtm_group_email()
 
@@ -412,7 +484,8 @@ class Game:
             self.state_df.loc[player_index, 'Revealed Mayor'] = 1
             
             send_email(self.rtm_group_email, mayor_name + ' has revealed themselves as mayor', 'Mayor reveal')
-            self.state_df.to_csv('game_state' + str(self.state_num) + '_reveal' + str(reveal_num) + '.csv', index=False)
+            filename = f'game_state{self.state_num}_reveal{reveal_num}.csv'
+            self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
         else:
             print('Player is not a mayor')
 
@@ -539,12 +612,13 @@ class Game:
                     self.state_df.loc[player_index, 'Actions used'] = 0
                     self.public_result = self.public_result + 'An amnesiac remembered they were a ' + player.remembered_role
 
-        self.state_df.to_csv('game_state' + str(self.state_num) + '_night' + str(self.night_num) + '.csv', index=False)
+        filename = f'game_state{self.state_num}_night{self.night_num}.csv'
+        self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
 
     # Not currently being used
     def check_win_conditions(self):
         last_state_num, last_state_file, last_night_num = find_last_file('night')
-        self.state_df = pd.read_csv(last_state_file)
+        self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
         self.create_players()
         

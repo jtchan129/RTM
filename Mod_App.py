@@ -125,6 +125,7 @@ if page == 'Overview':
 
 # PAGE: Role Distribution
 if page == 'Role Distribution':
+    st.header('Role Distribution')
     if last_state_num >= 0:
         st.warning("The game state file has already been populated, role Distribution cannot be changed. Restart game to change distribution")
     else:
@@ -147,7 +148,6 @@ if page == 'Role Distribution':
                         "Amnesiac": 1}
         required_dict = {'Godfather': 1}
 
-        st.header('Role Distribution')
         # Pulling data from the Google Sheet
         if 'role_dist_df' not in st.session_state:
             st.session_state['role_dist_df'], st.session_state['role_dist_worksheet'] = pull_data(role_distribution_link_id, os.path.join(DATA_DIR, 'role_distribution.csv'))
@@ -246,6 +246,7 @@ if page == 'Role Distribution':
 
 # PAGE: Role Assignment
 elif page == 'Role Assignment':
+    st.header('Role Assignment')
     if last_state_num > 0:
         st.warning("The game has already started. Role Assignments cannot be changed.")
     else:
@@ -266,7 +267,6 @@ elif page == 'Role Assignment':
         prev_roles = st.session_state.get('prev_roles', [])
         all_players = game.state_df['Name'].tolist()
         
-        st.header('Role Assignment')
         st.write('Use this section to randomly or manually assign player roles before starting the game.')
 
         # Initializing variables

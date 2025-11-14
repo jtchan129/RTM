@@ -335,6 +335,7 @@ class Game:
             email_data.append({
                 "Name": player.get_name(),
                 "Email": player.get_email(),
+                "Role": type(player).__name__,
                 "Results Preview": result_msg
             })
         preview_df = pd.DataFrame(email_data)

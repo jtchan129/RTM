@@ -1,7 +1,7 @@
 import streamlit as st
 import glob
 import os
-from RTM.Game import *
+from Game import *
 
 # Folder to hold game states and the role distribution csv files
 DATA_DIR = os.path.join(os.path.dirname(__file__), "Game Data")

@@ -351,7 +351,7 @@ class Game:
 
         return None
 
-    def run_voting(self):
+    def run_voting(self, preview_only=True):
         # Find most recent game state number, game state file name, and day number and set accordingly
         last_state_num, last_state_file, last_day_num = find_last_file('day')
         self.state_num = last_state_num + 1
@@ -410,31 +410,36 @@ class Game:
             for voted_player, num_votes in voting_dict.items():
                 if num_votes == vote_counts[0]:
                     most_voted = voted_player
-            # Getting voted player's role
-            most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role'].values[0]
-
             if most_voted == 'No vote':
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
             else:
+                # Getting voted player's role
+                most_voted_role = self.state_df.loc[self.state_df['Name'] == most_voted, 'Role'].values[0]
                 self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to execute ' + most_voted + ' the ' + most_voted_role
-                player_index = self.state_df[self.state_df['Name'] == most_voted].index
-                self.state_df.loc[player_index, 'Time died'] = ('Day ' + str(day_num))
 
-                # Checking for Jester or Saboteur deaths
-                if self.state_df.loc[player_index, 'Role'].values[0] == 'Saboteur':
-                    self.state_df.loc[self.state_df['Sabotaged'] == 1, 'Marked'] = 1
-                
-                if self.state_df.loc[player_index, 'Role'].values[0] == 'Jester':
-                    jester_name = self.state_df.loc[player_index, 'Name']
-                    vote_list = self.voting_df[(self.voting_df[day_column_name] == most_voted) & (self.voting_df['Voting Player'] != jester_name.values[0])]['Voting Player'].tolist()
-                    if vote_list:
-                        jester_target_name = random.choice(vote_list)
-                        jester_target_index = self.state_df[self.state_df['Name'] == jester_target_name].index
-                        self.state_df.loc[jester_target_index, 'Marked'] = 1
+                # Full execution for if not in preview mode
+                if not preview_only:
+                    player_index = self.state_df[self.state_df['Name'] == most_voted].index
+                    self.state_df.loc[player_index, 'Time died'] = ('Day ' + str(day_num))
 
+                    # Checking for Jester or Saboteur deaths
+                    if self.state_df.loc[player_index, 'Role'].values[0] == 'Saboteur':
+                        self.state_df.loc[self.state_df['Sabotaged'] == 1, 'Marked'] = 1
+                    
+                    if self.state_df.loc[player_index, 'Role'].values[0] == 'Jester':
+                        jester_name = self.state_df.loc[player_index, 'Name']
+                        vote_list = self.voting_df[(self.voting_df[day_column_name] == most_voted) & (self.voting_df['Voting Player'] != jester_name.values[0])]['Voting Player'].tolist()
+                        if vote_list:
+                            jester_target_name = random.choice(vote_list)
+                            jester_target_index = self.state_df[self.state_df['Name'] == jester_target_name].index
+                            self.state_df.loc[jester_target_index, 'Marked'] = 1
+        
+        # Return the public result if in preview mode
+        if preview_only:
+            return self.public_result
+
+        # Send the email and save the file if not in preview mode
         send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results', confirm=True)
-
-        # Saving
         filename = f'game_state{self.state_num}_day{day_num}.csv'
         self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
 

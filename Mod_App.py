@@ -29,65 +29,13 @@ page = st.sidebar.radio('Go to', [
     'Role Assignment',
     'Email Roles',
     'Run Night Actions',
-    'Voting Phase',
+    'Run Voting',
     'Utilities',
     'View Files'
 ])
 
 # PAGE: Overview
 if page == 'Overview':
-    # Tools section
-    st.subheader("Tools")
-
-    # Restart game button and confimation
-    if "confirm_restart" not in st.session_state:
-        st.session_state["confirm_restart"] = False
-    if "cancel_message" not in st.session_state:
-        st.session_state["cancel_message"] = False
-    if "restart_done" not in st.session_state:
-        st.session_state["restart_done"] = False
-
-    # Functions called by buttons
-    def show_confirm():
-        st.session_state["confirm_restart"] = True
-        st.session_state["cancel_message"] = False
-        st.session_state["restart_done"] = False
-
-    def cancel_restart():
-        st.session_state["confirm_restart"] = False
-        st.session_state["cancel_message"] = True
-        st.session_state["restart_done"] = False
-
-    def confirm_restart():
-        csv_files = glob.glob(os.path.join(DATA_DIR, "game_state*.csv"))
-        for f in csv_files:
-            os.remove(f)
-        if 'game' in st.session_state:
-            del st.session_state['game']
-        st.session_state["confirm_restart"] = False
-        st.session_state["cancel_message"] = False
-        st.session_state["restart_done"] = True
-
-    # Button logic
-    if st.session_state["restart_done"]:
-        st.success("Game successfully restarted!")
-        st.session_state["restart_done"] = False
-
-    elif st.session_state["confirm_restart"]:
-        st.warning("Are you sure you want to restart the game? This cannot be undone.")
-        cols = st.columns([1, 1])
-        with cols[0]:
-            st.button("Yes, Restart Game", on_click=confirm_restart)
-        with cols[1]:
-            st.button("Cancel", on_click=cancel_restart)
-
-    else:
-        if st.session_state["cancel_message"]:
-            st.info("Restart cancelled.")
-            st.session_state["cancel_message"] = False
-
-        st.button("Restart Game", on_click=show_confirm)
-
     # Overview section
     st.header('Overview')
 
@@ -121,6 +69,74 @@ if page == 'Overview':
         
         # Show dataframe
         st.dataframe(df_to_show[visible_cols])
+    
+    # Display next scheduled operation
+    last_night_num = find_last_file('night')[2]
+    last_day_num = find_last_file('day')[2]
+
+    if last_night_num > last_day_num:
+        next_step = "Run Voting"
+    else:
+        next_step = "Run Night Actions"
+    # Diaplying text
+    st.subheader("Next Scheduled Operation")
+    col, _ = st.columns([1, 15])
+    with col:
+        st.info(f"**{next_step}**")
+
+
+    # Tools section
+    st.subheader("Tools")
+
+    # Restart game button and confimation
+    if "confirm_restart" not in st.session_state:
+        st.session_state["confirm_restart"] = False
+    if "cancel_message" not in st.session_state:
+        st.session_state["cancel_message"] = False
+    if "restart_done" not in st.session_state:
+        st.session_state["restart_done"] = False
+
+    # Functions called by buttons
+    def show_confirm():
+        st.session_state["confirm_restart"] = True
+        st.session_state["cancel_message"] = False
+        st.session_state["restart_done"] = False
+
+    def cancel_restart():
+        st.session_state["confirm_restart"] = False
+        st.session_state["cancel_message"] = True
+        st.session_state["restart_done"] = False
+
+    def confirm_restart():
+        csv_files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
+        for file in csv_files:
+            os.remove(file)
+
+        if 'game' in st.session_state:
+            del st.session_state['game']
+        st.session_state["confirm_restart"] = False
+        st.session_state["cancel_message"] = False
+        st.session_state["restart_done"] = True
+
+    # Button logic
+    if st.session_state["restart_done"]:
+        st.success("Game successfully restarted!")
+        st.session_state["restart_done"] = False
+
+    elif st.session_state["confirm_restart"]:
+        st.warning("Are you sure you want to restart the game? This cannot be undone.")
+        cols = st.columns([1, 1])
+        with cols[0]:
+            st.button("Yes, Restart Game", on_click=confirm_restart)
+        with cols[1]:
+            st.button("Cancel", on_click=cancel_restart)
+
+    else:
+        if st.session_state["cancel_message"]:
+            st.info("Restart cancelled.")
+            st.session_state["cancel_message"] = False
+
+        st.button("Restart Game", on_click=show_confirm)
 
 
 # PAGE: Role Distribution
@@ -369,7 +385,7 @@ elif page == 'Email Roles':
 # PAGE: Run Night Actions
 elif page == 'Run Night Actions':
     st.header('Run Night Actions')
-    st.write('Run the night actions and resolve outcomes.')
+    st.write('Run night actions and resolve outcomes.')
 
     if 'night_preview_df' not in st.session_state:
         st.session_state['night_preview_df'] = pd.DataFrame()
@@ -384,10 +400,10 @@ elif page == 'Run Night Actions':
             st.success('Night Results Sent')
 
 
-# --- PAGE: Voting Phase ---
-elif page == 'Voting Phase':
-    st.header('🗳️ Voting Phase')
-    st.write('Process the daytime voting to eliminate a player.')
+# PAGE: Run Voting 
+elif page == 'Run Voting':
+    st.header('Run Voting')
+    st.write('Process voting to execute a player.')
 
     if st.button('Run Voting'):
         game.run_voting()
@@ -397,11 +413,11 @@ elif page == 'Voting Phase':
         st.subheader('Vote Results')
         st.write(game.vote_results)
 
-# --- PAGE: Utilities ---
+# PAGE: Utilities
 elif page == 'Utilities':
-    st.header('🧰 Utilities')
+    st.header('Utilities')
 
-    st.subheader('👑 Reveal Mayor')
+    st.subheader('Reveal Mayor')
     mayor_name = st.text_input('Enter player name:')
     if st.button('Reveal Mayor'):
         if mayor_name:
@@ -410,10 +426,10 @@ elif page == 'Utilities':
         else:
             st.warning('Please enter a player name.')
 
-    st.subheader('🕵️ Assign New Godfather')
+    st.subheader('Assign New Godfather')
     if st.button('Assign New Godfather'):
         game.assign_new_godfather()
-        st.success('New Godfather assigned!')
+        st.success('New Godfather assigned')
 
 
 # PAGE: View Files

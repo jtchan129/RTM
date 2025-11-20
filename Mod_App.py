@@ -405,13 +405,20 @@ elif page == 'Run Voting':
     st.header('Run Voting')
     st.write('Process voting to execute a player.')
 
-    if st.button('Run Voting'):
-        game.run_voting()
-        st.success('Voting phase complete!')
+    if 'vote_preview' not in st.session_state:
+        st.session_state['vote_preview'] = ""
 
-    if hasattr(game, 'vote_results'):
-        st.subheader('Vote Results')
-        st.write(game.vote_results)
+    if st.button('Preview Voting Results'):
+        st.session_state['vote_preview'] = game.run_voting(preview_only=True)
+        st.subheader("Preview Result")
+        st.info(st.session_state['vote_preview'])
+
+    if st.session_state['vote_preview']:
+        if st.button('Confirm and Execute Vote'):
+            game.run_voting(preview_only=False)
+            st.success('Voting execution complete! Results sent and state saved.')
+            st.session_state['vote_preview'] = ""
+
 
 # PAGE: Utilities
 elif page == 'Utilities':

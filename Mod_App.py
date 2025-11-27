@@ -22,6 +22,17 @@ if 'game' not in st.session_state:
 
 game = st.session_state['game']
 
+# Display next scheduled operation
+last_night_num = find_last_file('night')[2]
+last_day_num = find_last_file('day')[2]
+
+if last_night_num > last_day_num:
+    next_step = "Run Voting"
+else:
+    next_step = "Run Night Actions"
+
+st.sidebar.subheader("Next Scheduled Operation")
+st.sidebar.info(f"**{next_step}**")
 
 page = st.sidebar.radio('Go to', [
     'Overview',
@@ -69,21 +80,6 @@ if page == 'Overview':
         
         # Show dataframe
         st.dataframe(df_to_show[visible_cols])
-    
-    # Display next scheduled operation
-    last_night_num = find_last_file('night')[2]
-    last_day_num = find_last_file('day')[2]
-
-    if last_night_num > last_day_num:
-        next_step = "Run Voting"
-    else:
-        next_step = "Run Night Actions"
-    # Diaplying text
-    st.subheader("Next Scheduled Operation")
-    col, _ = st.columns([1, 15])
-    with col:
-        st.info(f"**{next_step}**")
-
 
     # Tools section
     st.subheader("Tools")

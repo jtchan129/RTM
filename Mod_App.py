@@ -12,6 +12,11 @@ st.title('Mafia Moderator Panel')
 
 # Find last state number and file and create the game
 last_state_num, last_state_file, _ = find_last_file(None)
+# Check how many state files there are and determine if it is a new game or not
+if num_state_files() == 0:
+    new_game = True
+else:
+    new_game = False
 if 'game' not in st.session_state:
     game = Game()
     # Load most recent state

@@ -82,6 +82,15 @@ def find_last_file(mode):
 
     return last_state_num, last_state_file, last_mode_num
 
+# Returns the number of state files in the DATA_DIR directory
+def num_state_files():
+    if not os.path.isdir(DATA_DIR):
+        return 0
+    else:
+        files = [f for f in os.listdir(DATA_DIR) if f.startswith('game_state') and f.endswith('.csv')]
+    
+    return len(files)
+
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
 def send_email(receiver_email, message_text_list, subject, confirm = False):

@@ -448,7 +448,7 @@ class Game:
             return self.public_result
 
         # Send the email and save the file if not in preview mode
-        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results', confirm=True)
+        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results')
         filename = f'game_state{self.state_num}_day{day_num}.csv'
         self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
 

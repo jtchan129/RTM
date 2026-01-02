@@ -143,7 +143,7 @@ if page == 'Overview':
 # PAGE: Role Distribution
 if page == 'Role Distribution':
     st.header('Role Distribution')
-    if last_state_num >= 0:
+    if not new_game:
         st.warning("The game state file has already been populated, role Distribution cannot be changed. Restart game to change distribution")
     else:
         if 'rand_key' not in st.session_state:

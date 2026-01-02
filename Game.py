@@ -452,7 +452,7 @@ class Game:
         # Load the last game state file
         self.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
 
-        newGF_df, _ = pull_data(newGF_link_id, 'newGF' + str(newGF_num) + '.csv')
+        newGF_df, _ = pull_data(newGF_link_id, os.path.join(DATA_DIR, 'newGF' + str(newGF_num) + '.csv'))
         newGF_name = newGF_df.loc[0, 'New godfather']
 
         player_index = self.state_df[self.state_df['Name'] == newGF_name].index

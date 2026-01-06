@@ -160,7 +160,7 @@ class Role:
         victim.attacked_by.append(self)
 
     def add_result(self, message):
-        self.night_result.append(message)
+        self.night_result.append(f"{message}.")
     
     def get_results(self):
         return self.night_result

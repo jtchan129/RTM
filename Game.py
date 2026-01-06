@@ -44,17 +44,9 @@ def update_file(dataframe, worksheet):
     worksheet.update([dataframe.columns.values.tolist()] + dataframe.values.tolist())
 
 # Remove all data besides headers from a sheet
-def clear_data(worksheet, confirm=False):
-    # Ask the user for confirmation
-    if confirm:
-        send_confirmation = input('Would you like to clear the actions sheet? (yes/no): ').strip().lower()
-        
-        if send_confirmation != 'yes':
-            print('Sheet not cleared')
-            return
+def clear_data(worksheet):
     worksheet.resize(rows=1)
     worksheet.resize(rows=150)
-    print('Sheet cleared')
 
 # Mode should be 'night'. 'day', 'newGF', or 'reveal', if mode = None then it will get the overall most recent state
 def find_last_file(mode):
@@ -93,20 +85,10 @@ def num_state_files():
 
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
-def send_email(receiver_email, message_text_list, subject, confirm = False):
+def send_email(receiver_email, message_text_list, subject):
     message_text = ''
     for text in message_text_list:
         message_text = message_text + ' ' + text
-
-    # Ask the user for confirmation
-    if confirm:
-        print(f'Message text:\n{message_text}')
-        
-        send_confirmation = input('Would you like to send the email? (yes/no): ').strip().lower()
-        
-        if send_confirmation != 'yes':
-            print('Email not sent')
-            return
     
     dataframe = pd.read_csv(mod_email_app_password_path)
     sender_email = dataframe.loc[0, 'email']

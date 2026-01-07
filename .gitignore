@@ -5,4 +5,4 @@ mod_email_app_password.csv
 # Game Data folder only saved to moderator's local environment
 Game Data/*
 
-__pycache__/
+__pycache__/*

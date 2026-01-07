@@ -391,6 +391,13 @@ class Game:
         vote_counts = list(voting_dict.values())
         vote_counts.sort(reverse=True)
 
+        # Creating vote summary for preview
+        vote_summary = {
+            player: votes
+            for player, votes in voting_dict.items()
+            if votes > 0
+        }
+
         # Determining execute and public message
         if vote_counts[0] == 0:
             self.public_result = 'On day ' + str(day_num) + ', the town of Pi voted to not execute anyone by a no vote'
@@ -427,7 +434,7 @@ class Game:
         
         # Return the public result if in preview mode
         if preview_only:
-            return self.public_result
+            return self.public_result, vote_summary
 
         # Send the email and save the file if not in preview mode
         send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results')

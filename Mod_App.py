@@ -409,16 +409,28 @@ elif page == 'Run Voting':
     if 'vote_preview' not in st.session_state:
         st.session_state['vote_preview'] = ""
 
+    if 'vote_summary' not in st.session_state:
+        st.session_state['vote_summary'] = {}
+
     if st.button('Preview Voting Results'):
-        st.session_state['vote_preview'] = game.run_voting(preview_only=True)
-        st.subheader("Preview Result")
-        st.info(st.session_state['vote_preview'])
+        st.session_state['vote_preview'], st.session_state['vote_summary'] = game.run_voting(preview_only=True)
 
     if st.session_state['vote_preview']:
+        st.subheader("Vote Preview and Breakdown")
+        st.info(st.session_state['vote_preview'])
+
+        for player, votes in sorted(
+            st.session_state['vote_summary'].items(),
+            key=lambda x: x[1],
+            reverse=True
+        ):
+            st.write(f"**{player}**: {votes} vote(s)")
+
         if st.button('Confirm and Execute Vote'):
             game.run_voting(preview_only=False)
             st.success('Voting execution complete! Results sent and state saved.')
             st.session_state['vote_preview'] = ""
+            st.session_state['vote_summary'] = {}
 
 
 # PAGE: Utilities

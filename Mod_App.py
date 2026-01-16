@@ -47,7 +47,8 @@ page = st.sidebar.radio('Go to', [
     'Run Night Actions',
     'Run Voting',
     'Utilities',
-    'View Files'
+    'View Files',
+    'Restart Game'
 ])
 
 # PAGE: Overview
@@ -85,59 +86,6 @@ if page == 'Overview':
         
         # Show dataframe
         st.dataframe(df_to_show[visible_cols])
-
-    # Tools section
-    st.subheader("Tools")
-
-    # Restart game button and confimation
-    if "confirm_restart" not in st.session_state:
-        st.session_state["confirm_restart"] = False
-    if "cancel_message" not in st.session_state:
-        st.session_state["cancel_message"] = False
-    if "restart_done" not in st.session_state:
-        st.session_state["restart_done"] = False
-
-    # Functions called by buttons
-    def show_confirm():
-        st.session_state["confirm_restart"] = True
-        st.session_state["cancel_message"] = False
-        st.session_state["restart_done"] = False
-
-    def cancel_restart():
-        st.session_state["confirm_restart"] = False
-        st.session_state["cancel_message"] = True
-        st.session_state["restart_done"] = False
-
-    def confirm_restart():
-        csv_files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
-        for file in csv_files:
-            os.remove(file)
-
-        if 'game' in st.session_state:
-            del st.session_state['game']
-        st.session_state["confirm_restart"] = False
-        st.session_state["cancel_message"] = False
-        st.session_state["restart_done"] = True
-
-    # Button logic
-    if st.session_state["restart_done"]:
-        st.success("Game successfully restarted!")
-        st.session_state["restart_done"] = False
-
-    elif st.session_state["confirm_restart"]:
-        st.warning("Are you sure you want to restart the game? This cannot be undone.")
-        cols = st.columns([1, 1])
-        with cols[0]:
-            st.button("Yes, Restart Game", on_click=confirm_restart)
-        with cols[1]:
-            st.button("Cancel", on_click=cancel_restart)
-
-    else:
-        if st.session_state["cancel_message"]:
-            st.info("Restart cancelled.")
-            st.session_state["cancel_message"] = False
-
-        st.button("Restart Game", on_click=show_confirm)
 
 
 # PAGE: Role Distribution
@@ -473,3 +421,58 @@ elif page == 'View Files':
             df = pd.read_csv(file_path)
             st.subheader(f"Contents of {selected_file}")
             st.dataframe(df)
+
+
+# PAGE: Restart Game
+elif page == 'Restart Game':
+    st.subheader("Restart Game")
+
+    # Restart game button and confimation
+    if "confirm_restart" not in st.session_state:
+        st.session_state["confirm_restart"] = False
+    if "cancel_message" not in st.session_state:
+        st.session_state["cancel_message"] = False
+    if "restart_done" not in st.session_state:
+        st.session_state["restart_done"] = False
+
+    # Functions called by buttons
+    def show_confirm():
+        st.session_state["confirm_restart"] = True
+        st.session_state["cancel_message"] = False
+        st.session_state["restart_done"] = False
+
+    def cancel_restart():
+        st.session_state["confirm_restart"] = False
+        st.session_state["cancel_message"] = True
+        st.session_state["restart_done"] = False
+
+    def confirm_restart():
+        csv_files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
+        for file in csv_files:
+            os.remove(file)
+
+        if 'game' in st.session_state:
+            del st.session_state['game']
+        st.session_state["confirm_restart"] = False
+        st.session_state["cancel_message"] = False
+        st.session_state["restart_done"] = True
+
+    # Button logic
+    if st.session_state["restart_done"]:
+        st.success("Game successfully restarted!")
+        st.session_state["restart_done"] = False
+
+    elif st.session_state["confirm_restart"]:
+        st.warning("Are you sure you want to restart the game? This cannot be undone.")
+        cols = st.columns([1, 1])
+        with cols[0]:
+            st.button("Yes, Restart Game", on_click=confirm_restart)
+        with cols[1]:
+            st.button("Cancel", on_click=cancel_restart)
+
+    else:
+        if st.session_state["cancel_message"]:
+            st.info("Restart cancelled.")
+            st.session_state["cancel_message"] = False
+
+        st.button("Restart Game", on_click=show_confirm)

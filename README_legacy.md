@@ -27,27 +27,18 @@ Game.py file contains:
   - A function to send emails to players with game updates and results  
   - A Game class which contains:  
       - Attributes used within the function in the class  
-      - A randomize_roles function that randomly designates roles based on the given distribution
-      - An assign_roles function that randomly assigns roles to players (NOT USED in the current implementation; this logic is pushed to the Streamlit app)
-      - An email_roles function to email the players their roles
-      - An email_roles_preview function to create a dataframe of Name, Email, Role, Email Preview, and Email Subject for each player and the group mafia email
-      - A run_night function that takes the most recent game state and players' submitted actions to find the resulting game state and send results to players  
-      - A run_voting function that takes the most recent game state, reads the voting Google Sheet to find the resulting game state, and sends results to players  
+      - A randomize_roles function to only be run at the start of the game that randomly designated roles based on the given distribution
+      - An assign_roles function to only be run at the start of the game that randomly assigns roles to players (So the assigned roles can be manually changed after randomize_roles if wanted)
+      - An email_roles function to only be run at the start of the game that email the players their roles (So roles can be manually changed after assign_roles if wanted)
+      - A run_night function that takes the most recent game state and players submitted actions to find the resulting game state and send results to players  
+      - A run_voting function that takes the most recent game state and reads the voting Google Sheet to find the resulting game state and send results to players  
       - An assign_new_godfather function that takes the most recent game state and reads the new godfather Google Sheet to set the new godfather
-      - A reveal_mayor function that takes the most recent game state and a player name who wants to reveal themselves as mayor, and sends that decision to players  
-Mod_App.py file contains:
-  - Overview page that  
-  - Role Distribution page that loads the role distribution from the "RTM Role Distribution" Google Sheet and allows the moderator to randomly create distributions of those role categories and manually change them  
-  - Role Assignment page that loads player info from the "RTM Role Assignments" Google Sheet and allows the moderator to randomly assign roles and manually change them  
-  - Email Roles page that first shows a preview of the emails sent to each player and the mafia group, and then sends those emails out  
-  - Run Night Actions page that first shows a preview of the emails each player will get sent based on the results of the night, and then sends those emails out  
-  - Run Voting page that first shows a preview of the number of votes each player got and what the result of the vote would be, and then sends the public email out  
-  - Utilities page that allows the moderator to reveal the mayor and elect new Godfathers
-  - View Files page that lets the moderator view any game file
-  - Restart Game page that allows the moderator to restart the game by deleting all associated game files
+      - A reveal_mayor function that takes the most recent game state and a player name who wants to reveal themselves as mayor and sends that decision to players  
+Main.py file contains:
+  - A menu to accept input from the user to select which function from Game.py to run
 
 ### Google Sheet Setup
-The service account email needs to have editor permission on each Google Sheet (The email in the json next to "client_email:"
+The service account email needs to have editor permission on each google sheet (The email in the json next to "client_email:"
 The associated Google Sheets should be formatted as follows:
 Players file:
 | Name         | Email          | Role          |
@@ -61,7 +52,7 @@ Role Distribution file:
 | Example category | Empty |
 | Example category | Empty |
 
-Actions file: (The headers row specifically needs to NOT be frozen, or clearing data after a night will not work)
+Actions file: (The headers row specifically needs to NOT be frozen or clearing data after a night will not work)
 | Timestamp | Email | Name | Who do you want to target with your night action | Who do you want your second target to be | Arsonist only: 'Douse', 'Undouse', or 'Ignite' |
 |--- | --- | --- | --- |--- |--- |
 | Empty | Empty | Empty | Empty | Empty | Empty |
@@ -82,7 +73,6 @@ New Godfather file:
 ### Usage
 New moderators need to set up google drive API and Gmail API as well as replace the 5 links and 2 paths with the correct ones for their own game.  
 Make sure there is a google form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.
-- Navigate to *\RTM and run "streamlit run Mod_App.py" to open the moderator app
 - Run start_game to begin the game and assign roles  
 - Run run_night to process each night  
 - Run run_voting after votes are in each day  

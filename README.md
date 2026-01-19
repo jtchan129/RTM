@@ -1,7 +1,7 @@
 # RTM
 
 ## General Usage
-New moderators need to set up Google Drive API and Gmail API as well as replace the 5 links and 2 paths with the correct ones for their own game.  
+New moderators need to request the existing moderator Google account or alternatively set up Google Drive API and Gmail API, as well as replace the 5 links and 2 paths with the correct ones for their own game.  
 Make sure there is a Google Form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.  
 - Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet  
 - Fill in the "Role Distribution Category" column of the "Role Distribution" Google Sheet with the desired role distribution categories (be sure to include 1 Godfather) (be sure to include 1 cop and 1 framer, unless you want to enforce the framer-cop dependency in the role assignment step instead)  

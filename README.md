@@ -93,7 +93,7 @@ Make sure there is a Google Form for players to submit their actions with the sa
 - During each voting phase, go to the Run Voting page, preview results to make sure everything looks correct, and send them to the players  
 - If a mayor wants to reveal themselves, go to the Utilities page, type in their name, and click reveal mayor
 - If a new Godfather needs to be assigned, at the appropriate time outlined in the rules, go to the Utilities page, check that there is an eligible player specified in the "New Godfather" Google Sheet, then click assign new Godfather
-* For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
+** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
 
 ### Updates Needed
  - Does not check for the requirement of framer needing a cop to be in the game

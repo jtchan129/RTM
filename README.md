@@ -17,6 +17,7 @@ Make sure there is a Google Form for players to submit their actions with the sa
 
 **Important:** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
 
+## Detailed Breakdown
 ### Automated moderation of real-time mafia  
 The program contains 3 Python files and a blank actions csv file.  
 

@@ -15,16 +15,16 @@ Make sure there is a Google Form for players to submit their actions with the sa
 - If a mayor wants to reveal themselves, go to the Utilities page, type in their name, and click reveal mayor
 - If a new Godfather needs to be assigned, at the appropriate time outlined in the rules, go to the Utilities page, check that there is an eligible player specified in the "New Godfather" Google Sheet, then click assign new Godfather
 
-**Important** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
+**Important:** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
 
 ### Automated moderation of real-time mafia  
-The program contains 3 Python files, and a blank actions csv file.  
+The program contains 3 Python files and a blank actions csv file.  
 
-Ask the previous mod for the mod email and password along with the mod email related files
+Ask the previous mod for the mod email and password, along with the mod email related files
 No longer needed: (It also requires setting up a Google Drive API in order to pull data from Google Sheets (needed for player data, role assignments, night actions, voting, and assigning new godfathers). Will need a .json file with credentials to use the API. (https://docs.gspread.org/en/latest/oauth2.html to set up Google Drive API)  
 
-Additionally requires setting up 2-factor authentication and an app password with a Gmail account in order to automate emails. I store Gmail username and app password in a mod_email_app_password.csv file with headers of "email", and "app_password" and data in their respective columns. (Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/)  
-In Game.py there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.)
+Additionally, it requires setting up 2-factor authentication and an app password with a Gmail account in order to automate emails. I store Gmail username and app password in a mod_email_app_password.csv file with headers of "email", and "app_password" and data in their respective columns. (Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/)  
+In Game.py, there are links to the 5 different Google Sheets files that are used in various stages of the game. They will need to be replaced with the corresponding links in each game.)
 
 Roles.py file contains:  
   - Wrappers to ensure proper targeting by players  
@@ -32,9 +32,9 @@ Roles.py file contains:
     - Default attributes to be overwritten in special cases  
     - Default initializer  
     - Default functions all roles will need  
-  - Town, Mafia, and Neutral classes which inherit attributes from Role  
-  - Multi-role class defenitions for any roles that are identical between Town and Mafia roles  
-  - Each roles' class defenition which:  
+  - Town, Mafia, and Neutral classes, which inherit attributes from Role  
+  - Multi-role class definitions for any roles that are identical between Town and Mafia roles  
+  - Each role's class definition:  
     - Inherit their factions class (and the Role class by extension) and a multi-role class if applicable  
     - Have any unique attributes specific to the role  
     - Defined night actions  
@@ -65,7 +65,7 @@ Mod_App.py file contains:
   - Restart Game page that allows the moderator to restart the game by deleting all associated game files
 
 ### Google Sheet Setup
-The service account email needs to have editor permission on each Google Sheet (The email in the json next to "client_email:"
+The service account email needs to have editor permission on each Google Sheet (The email in the JSON next to "client_email:"
 The associated Google Sheets should be formatted as follows:  
 Players file:
 | Name         | Email          | Role          |
@@ -99,4 +99,4 @@ New Godfather file:
 
 ### Updates Needed
  - Does not check for the requirement of framer needing a cop to be in the game
- - The new godfather google sheet is not automatically sent out which will be a problem if there is no moderator
+ - The new godfather Google Sheet is not automatically sent out, which will be a problem if there is no moderator

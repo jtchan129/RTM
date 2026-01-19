@@ -1,4 +1,21 @@
 # RTM
+
+### General Usage
+New moderators need to set up Google Drive API and Gmail API as well as replace the 5 links and 2 paths with the correct ones for their own game.  
+Make sure there is a Google Form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.  
+- Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet  
+- Fill in the "Role Distribution Category" column of the "Role Distribution" Google Sheet with the desired role distribution categories (be sure to include 1 Godfather) (be sure to include 1 cop and 1 framer, unless you want to enforce the framer-cop dependency in the role assignment step instead)  
+- Copy the list of role categories in the game and send it to the players  
+- Navigate to *\RTM and run "streamlit run Mod_App.py" to open the moderator app  
+- Go to the Role Distribution page, randomly create the actual role distribution, and manually edit it to balance the game as needed  
+- Go to the Role Assignments page, randomly assign roles, and manually edit it to balance the game as needed  
+- Go to the Email Roles page, preview roles to make sure everything looks correct, and send roles to the players  
+- During each night, go to the Run Night Actions page, preview results to make sure everything looks correct, and send them to the players  
+- During each voting phase, go to the Run Voting page, preview results to make sure everything looks correct, and send them to the players  
+- If a mayor wants to reveal themselves, go to the Utilities page, type in their name, and click reveal mayor
+- If a new Godfather needs to be assigned, at the appropriate time outlined in the rules, go to the Utilities page, check that there is an eligible player specified in the "New Godfather" Google Sheet, then click assign new Godfather  
+**Important** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
+
 ### Automated moderation of real-time mafia  
 The program contains 3 Python files, and a blank actions csv file.  
 
@@ -78,22 +95,6 @@ New Godfather file:
 | ------------ | -------------- |
 | Where the new godfather will be put | Empty |
 | Empty | Empty |
-
-### Usage
-New moderators need to set up Google Drive API and Gmail API as well as replace the 5 links and 2 paths with the correct ones for their own game.  
-Make sure there is a Google Form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.  
-- Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet  
-- Fill in the "Role Distribution Category" column of the "Role Distribution" Google Sheet with the desired role distribution categories (be sure to include 1 Godfather) (be sure to include 1 cop and 1 framer, unless you want to enforce the framer-cop dependency in the role assignment step instead)  
-- Copy the list of role categories in the game and send it to the players  
-- Navigate to *\RTM and run "streamlit run Mod_App.py" to open the moderator app  
-- Go to the Role Distribution page, randomly create the actual role distribution, and manually edit it to balance the game as needed  
-- Go to the Role Assignments page, randomly assign roles, and manually edit it to balance the game as needed  
-- Go to the Email Roles page, preview roles to make sure everything looks correct, and send roles to the players  
-- During each night, go to the Run Night Actions page, preview results to make sure everything looks correct, and send them to the players  
-- During each voting phase, go to the Run Voting page, preview results to make sure everything looks correct, and send them to the players  
-- If a mayor wants to reveal themselves, go to the Utilities page, type in their name, and click reveal mayor
-- If a new Godfather needs to be assigned, at the appropriate time outlined in the rules, go to the Utilities page, check that there is an eligible player specified in the "New Godfather" Google Sheet, then click assign new Godfather
-** For all steps detailed ("Voting Player" column of the "Voting" Google Sheet, players' votes in the "Voting" Google Sheet, mayor reveal, and new Godfather), the spelling and capitalization of players' names need to be identical to their names in the game_state files (which is derived from the "RTM Role Assignments" Google Sheet)
 
 ### Updates Needed
  - Does not check for the requirement of framer needing a cop to be in the game

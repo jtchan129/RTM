@@ -3,7 +3,8 @@
 ## General Usage
 New moderators need to request the existing moderator Google account or alternatively set up Google Drive API and Gmail API, as well as replace the 5 links and 2 paths with the correct ones for their own game.  
 Make sure there is a Google Form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.  
-- Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet  
+- Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet
+- Copy the list of player names into the "Name", "Who do you want to target with your night action", and "Who do you want your second target to be" sections of the "RTM Night Action" Google Form  
 - Fill in the "Role Distribution Category" column of the "Role Distribution" Google Sheet with the desired role distribution categories (be sure to include 1 Godfather) (be sure to include 1 cop and 1 framer, unless you want to enforce the framer-cop dependency in the role assignment step instead)  
 - Copy the list of role categories in the game and send it to the players  
 - Navigate to *\RTM and run "streamlit run Mod_App.py" to open the moderator app  

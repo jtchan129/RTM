@@ -317,10 +317,19 @@ class Game:
         self.run_actions()
 
         # Process deaths
-        self.process_deaths()
+        self.process_deaths(preview_only)
 
         # Creating preview data
         email_data = []
+
+        # Add public result row
+        email_data.append({
+            "Name": "Public",
+            "Email": "Everyone",
+            "Role": "Public Results",
+            "Results Preview": [self.public_result]
+        })
+
         for player in self.player_dict.keys():
             result_msg = player.get_results()
             email_data.append({
@@ -329,6 +338,7 @@ class Game:
                 "Role": type(player).__name__,
                 "Results Preview": result_msg
             })
+
         preview_df = pd.DataFrame(email_data)
 
         # If preview_only, return preview and exit without modifying files or sending emails
@@ -337,6 +347,7 @@ class Game:
 
         # If not preview_only, send emails, clear actions, and update state file
         self.email_results()
+        send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' public results')
         clear_data(actions_worksheet)
         self.update_state_file()
 
@@ -566,15 +577,16 @@ class Game:
                 send_email(player.get_email(), player.get_results(), 'Night ' + str(self.night_num) + ' individual results')
 
 
-    def process_deaths(self):
+    def process_deaths(self, preview_only):
         self.public_result = 'In the town of Pi the villagers awoke after night ' + str(self.night_num)
         dead_list = []
 
         # Editing the state_df
         for player in self.player_dict:
             if player.died_tonight == True:
-                player_index = self.state_df[self.state_df['Name'] == player.get_name()].index
-                self.state_df.loc[player_index, 'Time died'] = 'Night ' + str(self.night_num)
+                if preview_only == False:
+                    player_index = self.state_df[self.state_df['Name'] == player.get_name()].index
+                    self.state_df.loc[player_index, 'Time died'] = 'Night ' + str(self.night_num)
                 dead_list.append(player)
 
         # Preparing the public result

@@ -80,6 +80,7 @@ Role Distribution file:
 | ------------ | -------------- |
 | Example category | Empty |
 | Example category | Empty |
+Categories should be one of ('Town Investigative', 'Town Killing', 'Town Support', 'Town Random', 'Mafia', 'Neutral', 'Godfather', 'Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor', 'Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur', 'Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer')
 
 Actions file: (The headers row specifically needs to NOT be frozen, or clearing data after a night will not work)
 | Timestamp | Email | Name | Who do you want to target with your night action | Who do you want your second target to be | Arsonist only: 'Douse', 'Undouse', or 'Ignite' |

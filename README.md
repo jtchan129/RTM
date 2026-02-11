@@ -2,6 +2,7 @@
 
 ## General Usage
 New moderators need to request the existing moderator Google account or alternatively set up Google Drive API and Gmail API, as well as replace the 5 links and 2 paths with the correct ones for their own game.  
+Also required to get or create files for google_API_credentials_path and mod_email_app_password_path to use Google APIs  
 Make sure there is a Google Form for players to submit their actions with the same questions as headers in the actions spreadsheet. Limit to 1 response needs to be off.  
 - Collect game interest and populate the "Name" and "Email" columns of the "RTM Role Assignments" Google Sheet and the "Voting Player" column of the "Voting" Google Sheet
 - Copy the list of player names into the "Name", "Who do you want to target with your night action", and "Who do you want your second target to be" sections of the "RTM Night Action" Google Form  

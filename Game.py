@@ -345,7 +345,7 @@ class Game:
         if preview_only:
             return preview_df
         
-        # Send public email with default or custom p8ublic results
+        # Send public email with default or custom public results if not in preview mode
         if custom_public_result is None:
             final_public_result = self.public_result
         else:
@@ -358,7 +358,7 @@ class Game:
 
         return None
 
-    def run_voting(self, preview_only=True):
+    def run_voting(self, preview_only=True, custom_public_result=None):
         # Find most recent game state number, game state file name, and day number and set accordingly
         last_state_num, last_state_file, last_day_num = find_last_file('day')
         self.state_num = last_state_num + 1
@@ -452,8 +452,13 @@ class Game:
         if preview_only:
             return self.public_result, vote_summary
 
-        # Send the email and save the file if not in preview mode
-        send_email(self.rtm_group_email, self.public_result, 'Day ' + str(day_num) + ' execution results')
+        # Send public email with default or custom public results if not in preview mode
+        if custom_public_result is None:
+            final_public_result = self.public_result
+        else:
+            final_public_result = custom_public_result
+        send_email(self.rtm_group_email, final_public_result, 'Day ' + str(day_num) + ' execution results')
+        # Save the file if not in preview mode
         filename = f'game_state{self.state_num}_day{day_num}.csv'
         self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)
 

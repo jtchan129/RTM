@@ -358,11 +358,14 @@ elif page == 'Run Night Actions':
                 "Enter custom public result:",
                 value=st.session_state['custom_public_result']
             )
-        else:
-            st.session_state['custom_public_result'] = None
 
         if st.button('Confirm and Send Night Results'):
-            _ = game.run_night(preview_only=False, custom_public_result=st.session_state['custom_public_result'])
+            if public_option == "Use default public result":
+                custom_result_arg = None
+            else:
+                custom_result_arg = st.session_state['custom_public_result']
+
+            _ = game.run_night(preview_only=False, custom_public_result=custom_result_arg)
             st.success('Night Results Sent')
 
 
@@ -376,6 +379,9 @@ elif page == 'Run Voting':
 
     if 'vote_summary' not in st.session_state:
         st.session_state['vote_summary'] = {}
+
+    if 'custom_vote_public_result' not in st.session_state:
+        st.session_state['custom_vote_public_result'] = ""
 
     if st.button('Preview Voting Results'):
         st.session_state['vote_preview'], st.session_state['vote_summary'] = game.run_voting(preview_only=True)
@@ -391,8 +397,23 @@ elif page == 'Run Voting':
         ):
             st.write(f"**{player}**: {votes} vote(s)")
 
+        public_option = st.radio(
+            "Public Result Option:",
+            ("Use default public result", "Send custom public result")
+        )
+
+        if public_option == "Send custom public result":
+            st.session_state['custom_vote_public_result'] = st.text_area(
+                "Enter custom public result:",
+                value=st.session_state['custom_vote_public_result']
+            )
+
         if st.button('Confirm and Execute Vote'):
-            game.run_voting(preview_only=False)
+            if public_option == "Use default public result":
+                custom_result_arg = None
+            else:
+                custom_result_arg = st.session_state['custom_vote_public_result']
+            game.run_voting(preview_only=False, custom_public_result=custom_result_arg)
             st.success('Voting execution complete! Results sent and state saved.')
             st.session_state['vote_preview'] = ""
             st.session_state['vote_summary'] = {}

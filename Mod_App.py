@@ -341,11 +341,28 @@ elif page == 'Run Night Actions':
 
     if st.button('Preview Night Actions'):
         st.session_state['night_preview_df'] = game.run_night(preview_only=True)
+    
+    if not st.session_state['night_preview_df'].empty:
         st.dataframe(st.session_state['night_preview_df'])
 
-    if not st.session_state['night_preview_df'].empty:
+        public_option = st.radio(
+            "Public Result Option:",
+            ("Use default public result", "Send custom public result")
+        )
+
+        if 'custom_public_result' not in st.session_state:
+            st.session_state['custom_public_result'] = ""
+        
+        if public_option == "Send custom public result":
+            st.session_state['custom_public_result'] = st.text_area(
+                "Enter custom public result:",
+                value=st.session_state['custom_public_result']
+            )
+        else:
+            st.session_state['custom_public_result'] = None
+
         if st.button('Confirm and Send Night Results'):
-            _ = game.run_night(preview_only=False)
+            _ = game.run_night(preview_only=False, custom_public_result=st.session_state['custom_public_result'])
             st.success('Night Results Sent')
 
 

@@ -287,7 +287,7 @@ class Game:
         return pd.DataFrame(email_data)
 
 
-    def run_night(self, preview_only=True):
+    def run_night(self, preview_only=True, custom_public_result=None):
         # Find most recent game state number, game state number, and night number and set accordingly
         last_state_num, last_state_file, last_night_num = find_last_file('night')
         self.state_num = last_state_num + 1
@@ -344,10 +344,15 @@ class Game:
         # If preview_only, return preview and exit without modifying files or sending emails
         if preview_only:
             return preview_df
-
+        
+        # Send public email with default or custom p8ublic results
+        if custom_public_result is None:
+            final_public_result = self.public_result
+        else:
+            final_public_result = custom_public_result
+        send_email(self.rtm_group_email, final_public_result, 'Night ' + str(self.night_num) + ' public results')
         # If not preview_only, send emails, clear actions, and update state file
         self.email_results()
-        send_email(self.rtm_group_email, self.public_result, 'Night ' + str(self.night_num) + ' public results')
         clear_data(actions_worksheet)
         self.update_state_file()
 

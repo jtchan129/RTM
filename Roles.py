@@ -342,6 +342,8 @@ class Veteran(Town):
         for visitor in temp_targeted_by:
             self.attack(visitor)
 
+        self.add_result('You went on guard')
+
 
 class Bomb(Town):
     is_lethal = True
@@ -430,6 +432,7 @@ class Janitor(Mafia):
         if self.get_target().died_tonight == True:
             self.add_result('You cleaned ' + self.get_target().get_name() + ' and their role was ' + str(type(self.get_target()).__name__))
         else:
+            self.add_result('You attempted to clean ' + self.get_target().get_name() + ' but they did not die')
             self.actions_used -= 1
 
 
@@ -438,6 +441,7 @@ class Framer(Mafia):
     @check_target
     def perform_action(self):
         self.get_target().is_guilty = True
+        self.add_result('You framed ' + self.get_target().get_name())
 
 
 class Yakuza(Mafia):
@@ -472,6 +476,7 @@ class Saboteur(Mafia):
     @check_target
     def perform_action(self):
         self.get_target().sabotaged = 1
+        self.add_result('You sabotaged ' + self.get_target().get_name())
 
 class Sniper(Mafia):
     is_lethal = True

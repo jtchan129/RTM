@@ -86,9 +86,11 @@ def num_state_files():
 
 # Adapted from https://stackoverflow.com/questions/10147455/how-to-send-an-email-with-gmail-as-provider-using-python/27515833#27515833 and https://mailtrap.io/blog/python-send-email/
 def send_email(receiver_email, message_text_list, subject):
-    message_text = ''
-    for text in message_text_list:
-        message_text = message_text + ' ' + text
+    # Creating the body of the email
+    if isinstance(message_text_list, list):
+        message_text = ' '.join(message_text_list)
+    else:
+        message_text = str(message_text_list)
     
     dataframe = pd.read_csv(mod_email_app_password_path)
     sender_email = dataframe.loc[0, 'email']

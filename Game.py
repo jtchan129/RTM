@@ -321,6 +321,12 @@ class Game:
         # Process deaths
         self.process_deaths(preview_only)
 
+        # Checking for amnesiac remembering to add to public result
+        for player in self.player_dict:
+            if str(type(player).__name__) == 'Amnesiac':
+                if player.remembered_role != 'Amnesiac':
+                    self.public_result = self.public_result + ' An amnesiac remembered they were a ' + player.remembered_role + '.'
+
         # Creating preview data
         email_data = []
 
@@ -614,10 +620,10 @@ class Game:
                 if i != len(dead_list) - 1:
                     self.public_result = self.public_result + ' and '
                 else:
-                    self.public_result = self.public_result + ' dead'
+                    self.public_result = self.public_result + ' dead.'
 
         else:
-            self.public_result = self.public_result + ' to a peaceful morning'
+            self.public_result = self.public_result + ' to a peaceful morning.'
 
 
     # Update the file to include the number of actions each player has used, if they are doused or not, and reset the sabogated player
@@ -638,7 +644,6 @@ class Game:
                 if player.remembered_role != 'Amnesiac':
                     self.state_df.loc[player_index, 'Role'] = player.remembered_role
                     self.state_df.loc[player_index, 'Actions used'] = 0
-                    self.public_result = self.public_result + 'An amnesiac remembered they were a ' + player.remembered_role
 
         filename = f'game_state{self.state_num}_night{self.night_num}.csv'
         self.state_df.to_csv(os.path.join(DATA_DIR, filename), index=False)

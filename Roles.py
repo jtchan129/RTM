@@ -40,10 +40,10 @@ def check_target_no_increment(action):
 # Probably a better way to do this besides a whole extra wrapper
 def check_target_arso(action):
     def wrapper(self, *args, **kwargs):
+        if self.dead:
+            return
         if self.arso_action in ['Douse', 'Undouse']:
             if self.get_target() is None:
-                return
-            if self.dead:
                 return
             if self.get_target().dead:
                 return

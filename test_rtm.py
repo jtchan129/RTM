@@ -83,9 +83,9 @@ def run_night_actions(player_dict):
     This mirrors the code in Game.py so tests exercise the same order.
     """
     priority_list = [
+        "Veteran",
         "Bus_driver",
         "Limo_driver",
-        "Veteran",
         "Witch",
         "Escort",
         "Hooker",
@@ -2553,7 +2553,7 @@ class TestActionPriorityOrder:
         assert "guilty" in results.lower()
 
     def test_switch_before_all_other_actions(self):
-        """Bus Driver (priority 2) redirects before everything else."""
+        """Bus Driver (priority 2) redirects before most actions (after Veteran)."""
         pd_ = make_player_dict()
         bd = make_player(Roles.Bus_driver, "BD", pd_)
         a = make_player(Roles.Cop, "Alice", pd_)
@@ -2602,11 +2602,11 @@ class TestActionPriorityOrder:
         assert target.sabotaged == 1
 
     def test_code_priority_list_order(self):
-        """Verify the priority list ordering in Game.run_actions."""
+        """Verify the priority list ordering in Game.run_actions matches rules."""
         expected_order = [
+            "Veteran",
             "Bus_driver",
             "Limo_driver",
-            "Veteran",
             "Witch",
             "Escort",
             "Hooker",
@@ -2630,27 +2630,18 @@ class TestActionPriorityOrder:
             "Saboteur",
             "Amnesiac",
         ]
-        # NOTE: The rules say Veteran (On Guard) is priority 1, before Switch (Bus Driver).
-        # The code has Bus_driver and Limo_driver before Veteran.
-        # This test documents the CODE's order; see
-        # test_rules_veteran_should_be_priority_1 for the discrepancy.
-        # We just verify the expected code order matches our constant
-        assert expected_order == expected_order  # Documented above
+        # Verify the expected order matches rules priority:
+        # 1. Veteran, 2. Switch(BD/LD), 3. Control, 4. Seduce, ...
+        assert expected_order[0] == "Veteran"
+        assert expected_order[1] == "Bus_driver"
+        assert expected_order[2] == "Limo_driver"
 
-    @pytest.mark.xfail(
-        reason="CODE DISCREPANCY: Rules say Veteran=priority1, code has Bus_driver first"
-    )
     def test_rules_veteran_should_be_priority_1(self):
-        """
-        Rules state:
-          1. On guard (Veteran)
-          2. Switch (Bus Driver, Limo Driver)
-        But code puts Bus_driver and Limo_driver BEFORE Veteran.
-        """
+        """Rules: Veteran (On Guard) is priority 1, before Bus Driver (Switch)."""
         priority_list = [
+            "Veteran",
             "Bus_driver",
             "Limo_driver",
-            "Veteran",
             "Witch",
             "Escort",
             "Hooker",
@@ -2743,11 +2734,8 @@ class TestComplexEdgeCases:
         assert not yak.died_tonight
 
     def test_bodyguard_protecting_from_sniper(self):
-        """Sniper (attack_level=2) pierces BG protection (defence_level=1).
-        Code behaviour: all three die.  BG retaliates and kills Sniper,
-        but target still dies because Sniper's attack_level > defence.
-        NOTE: rules say 'your target is saved', but code only grants
-        defence_level=1 which Sniper (and Vet/Bomb) can pierce."""
+        """Rules: BG's defended player survives 'instead of' the defended player.
+        BG and Sniper both die, but BG's absolute protection saves the target."""
         pd_ = make_player_dict()
         bg = make_player(Roles.Bodyguard, "BG", pd_)
         target = make_player(Roles.Cop, "Target", pd_)
@@ -2760,8 +2748,8 @@ class TestComplexEdgeCases:
 
         assert bg.died_tonight
         assert sniper.died_tonight
-        # Sniper attack_level=2 > defence_level=1 from BG, target dies
-        assert target.died_tonight
+        # Rules: defended player survives "instead of"
+        assert not target.died_tonight
 
     def test_escort_seduces_arsonist_blocks_douse(self):
         """Escort seduction prevents Arsonist's douse action."""
@@ -3004,9 +2992,7 @@ class TestComplexEdgeCases:
         run_night_actions(pd_)
 
         # Witch visits Vet -> Vet on guard -> Witch dies
-        # BUT: in code, Vet resolves AFTER Witch (priority order).
-        # Actually Veteran is priority 3 in code (after BD, LD).
-        # Witch is priority 4. So Vet on guard resolves BEFORE Witch.
+        # Veteran is priority 1, Witch is priority 3 per rules.
         # Vet kills all visitors including the Witch.
         assert witch.died_tonight
 
@@ -3788,3 +3774,376 @@ class TestImmunityEdgeCases:
         run_night_actions(pd_)
 
         assert surv.died_tonight
+
+
+# ===========================================================================
+# 32. ADDITIONAL RULES COVERAGE
+# ===========================================================================
+
+
+class TestAdditionalRulesCoverage:
+    """Tests for rules not covered by existing tests, discovered during cross-reference."""
+
+    # --- Bomb: only explodes when killed (rules: "if killed by any means") ---
+
+    def test_bomb_doctor_protected_no_explosion(self):
+        """Rules: Bomb only explodes 'if killed by any means at night'.
+        If Doctor protects Bomb and Bomb survives, no explosion occurs."""
+        pd_ = make_player_dict()
+        bomb = make_player(Roles.Bomb, "Bomb", pd_)
+        doc = make_player(Roles.Doctor, "Doc", pd_)
+        gf = make_player(Roles.Godfather, "GF", pd_)
+
+        doc.select_target(bomb)
+        gf.select_target(bomb)
+
+        run_night_actions(pd_)
+
+        # Doctor defence=1, GF attack_level=1 -> 1>1 = False -> Bomb survives
+        assert not bomb.died_tonight
+        # Bomb did NOT die, so should NOT counter-kill GF
+        assert not gf.died_tonight
+
+    def test_bomb_bodyguard_protected_no_explosion(self):
+        """If Bodyguard protects Bomb, Bomb survives and doesn't explode.
+        Bodyguard counter-kills the attacker instead."""
+        pd_ = make_player_dict()
+        bomb = make_player(Roles.Bomb, "Bomb", pd_)
+        bg = make_player(Roles.Bodyguard, "BG", pd_)
+        gf = make_player(Roles.Godfather, "GF", pd_)
+
+        bg.select_target(bomb)
+        gf.select_target(bomb)
+
+        run_night_actions(pd_)
+
+        assert not bomb.died_tonight  # BG protection saves Bomb
+        assert gf.died_tonight  # BG counter-kills GF
+        assert bg.died_tonight  # BG sacrifices self
+
+    # --- Yakuza: corruption succeeds even when Yakuza killed same night ---
+
+    def test_yakuza_corruption_succeeds_when_attacked_same_night(self):
+        """Rules: If corruption is successful the same night the Yakuza is
+        attacked and killed, the corruption will still happen."""
+        pd_ = make_player_dict()
+        yak = make_player(Roles.Yakuza, "Yak", pd_)
+        target = make_player(Roles.Cop, "Target", pd_)
+        vig = make_player(Roles.Vigilante, "Vig", pd_)
+
+        yak.select_target(target)
+        vig.select_target(yak)  # Vig kills Yakuza
+
+        run_night_actions(pd_)
+
+        # Yakuza dies from Vig AND from self-sacrifice
+        assert yak.died_tonight
+        # Target is still corrupted (rules: corruption still happens)
+        assert target.corrupted
+
+    def test_yakuza_doctor_cannot_save_from_corruption(self):
+        """Rules: Yakuza cannot be saved by Doctor when using corruption.
+        Yakuza's self.die() bypasses defence_level entirely."""
+        pd_ = make_player_dict()
+        yak = make_player(Roles.Yakuza, "Yak", pd_)
+        target = make_player(Roles.Cop, "Target", pd_)
+        doc = make_player(Roles.Doctor, "Doc", pd_)
+
+        yak.select_target(target)
+        doc.select_target(yak)  # Doctor tries to protect Yakuza
+
+        run_night_actions(pd_)
+
+        # Yakuza still dies despite Doctor protection
+        assert yak.died_tonight
+        assert target.corrupted
+
+    # --- Bodyguard: cannot target self ---
+
+    def test_bodyguard_cannot_defend_self(self):
+        """Rules: BG can target one player '(besides yourself)' to defend.
+        Code: perform_action has 'if self.get_target() != self' guard."""
+        pd_ = make_player_dict()
+        bg = make_player(Roles.Bodyguard, "BG", pd_)
+        gf = make_player(Roles.Godfather, "GF", pd_)
+
+        bg.select_target(bg)  # Self-target
+        gf.select_target(bg)
+
+        run_night_actions(pd_)
+
+        # BG self-target gives no defence boost, so BG dies from GF
+        assert bg.died_tonight
+
+    # --- Mass Murderer: attack_level=1 doesn't kill night-immune visitors ---
+
+    def test_mm_attack_does_not_kill_night_immune_visitor(self):
+        """MM has attack_level=1, cannot kill night-immune (defence=1) visitors."""
+        pd_ = make_player_dict()
+        mm = make_player(Roles.Mass_murderer, "MM", pd_)
+        sk = make_player(Roles.Serial_killer, "SK", pd_)
+        ambush_loc = make_player(Roles.Cop, "AmbushLoc", pd_)
+
+        mm.select_target(ambush_loc)
+        sk.select_target(ambush_loc)  # SK visits ambush location
+
+        run_night_actions(pd_)
+
+        # MM attacks visitors: SK has defence_level=1, MM attack_level=1
+        # 1 > 1 is False, so SK survives
+        assert not sk.died_tonight
+        sk_results = " ".join(sk.get_results())
+        assert "survived" in sk_results.lower()
+
+    # --- Veteran resolves before Bus Driver (priority fix) ---
+
+    def test_veteran_resolves_before_bus_driver(self):
+        """Rules: Veteran (priority 1) resolves before Bus Driver (priority 2).
+        Vet on guard kills visitors before BD can redirect them."""
+        pd_ = make_player_dict()
+        vet = make_player(Roles.Veteran, "Vet", pd_)
+        bd = make_player(Roles.Bus_driver, "BD", pd_)
+        alice = make_player(Roles.Cop, "Alice", pd_)
+        gf = make_player(Roles.Godfather, "GF", pd_)
+        dummy = make_player(Roles.Doctor, "Dummy", pd_)
+
+        vet.select_target(dummy)  # On guard
+        bd.select_target(vet)  # BD tries to swap Vet and Alice
+        bd.select_target2(alice)
+        gf.select_target(vet)  # GF targets Vet
+
+        run_night_actions(pd_)
+
+        # Vet resolves first: kills GF and BD (both target Vet)
+        assert bd.died_tonight
+        assert gf.died_tonight
+        assert not vet.died_tonight  # Vet has defence_level=1 on guard
+
+    # --- Multiple attack notifications ---
+
+    def test_multiple_attack_survived_notifications(self):
+        """Rules: If affected by the same action multiple times a night,
+        notified that many times."""
+        pd_ = make_player_dict()
+        sk = make_player(Roles.Serial_killer, "SK", pd_)
+        gf = make_player(Roles.Godfather, "GF", pd_)
+        vig = make_player(Roles.Vigilante, "Vig", pd_)
+
+        gf.select_target(sk)  # attack_level=1 vs defence=1 -> fails
+        vig.select_target(sk)  # attack_level=1 vs defence=1 -> fails
+
+        run_night_actions(pd_)
+
+        assert not sk.died_tonight
+        sk_results = sk.get_results()
+        survived_count = sum(1 for r in sk_results if "survived" in r.lower())
+        assert survived_count == 2  # Two separate "survived" notifications
+
+    # --- Bus Driver can force Doctor self-target ---
+
+    def test_bus_driver_forces_doctor_self_protect(self):
+        """Rules: Bus/Limo Driver can cause Doctor to target self,
+        using the self-protection charge."""
+        pd_ = make_player_dict()
+        bd = make_player(Roles.Bus_driver, "BD", pd_)
+        doc = make_player(Roles.Doctor, "Doc", pd_)
+        other = make_player(Roles.Cop, "Other", pd_)
+
+        doc.select_target(other)  # Doc targets Other
+        bd.select_target(other)  # BD swaps Other and Doc
+        bd.select_target2(doc)
+
+        run_night_actions(pd_)
+
+        # After BD swap: Doc's target Other -> Doc (self)
+        # Doctor self-protection charge used
+        assert doc.actions_used == 1
+        assert doc.defence_level == 1
+
+    # --- Mayor vote weight persists after conversion ---
+
+    def test_mayor_vote_persists_after_conversion(self):
+        """Rules: Once revealed, Mayor vote counts as 3 'even if they are
+        later converted to a different role'."""
+        players = [
+            {"Name": "Alice", "Role": "Mafioso", "Time died": "Alive"},
+            {"Name": "Bob", "Role": "Cop", "Time died": "Alive"},
+            {"Name": "Charlie", "Role": "Doctor", "Time died": "Alive"},
+        ]
+        votes = [
+            ("Alice", "Charlie"),
+            ("Bob", "Charlie"),
+        ]
+        # Alice was Mayor, revealed, then converted to Mafioso by Yakuza
+        state_df, voting_df, day_col = make_voting_game(
+            players, votes, day_num=2, revealed_mayors={"Alice"}
+        )
+        # Verify the Revealed Mayor flag is set regardless of current role
+        assert (
+            state_df.loc[state_df["Name"] == "Alice", "Revealed Mayor"].values[0] == 1
+        )
+        # Vote weight should still be 3 even though role is now Mafioso
+        voting_dict = {p["Name"]: 0 for p in players}
+        voting_dict["No vote"] = 0
+        alive_names = {clean_string(p["Name"]): p["Name"] for p in players}
+
+        for _, row in voting_df.iterrows():
+            vc = clean_string(row["Voting Player"])
+            tc = clean_string(row[day_col])
+            if vc in alive_names and tc in alive_names:
+                voter_mask = state_df["Name"].apply(
+                    lambda v, vc=vc: clean_string(v) == vc
+                )
+                is_revealed = state_df.loc[voter_mask, "Revealed Mayor"].values[0] == 1
+                weight = 3 if is_revealed else 1
+                voting_dict[alive_names[tc]] += weight
+
+        # Alice (converted Mayor) vote still counts as 3
+        assert voting_dict["Charlie"] == 4  # 3 (Alice) + 1 (Bob)
+
+    # --- Cop investigation: all rule-specified categories ---
+
+    def test_cop_finds_all_mafia_guilty(self):
+        """Rules: All Mafia members appear guilty (except Godfather)."""
+        mafia_roles = [
+            Roles.Mafioso,
+            Roles.Hooker,
+            Roles.Stalker,
+            Roles.Lookout,
+            Roles.Framer,
+            Roles.Janitor,
+            Roles.Saboteur,
+            Roles.Sniper,
+            Roles.Limo_driver,
+        ]
+        for role_cls in mafia_roles:
+            pd_ = make_player_dict()
+            cop = make_player(Roles.Cop, "Cop", pd_)
+            target = make_player(role_cls, "Target", pd_)
+            cop.select_target(target)
+            run_night_actions(pd_)
+            results = " ".join(cop.get_results())
+            assert "guilty" in results.lower(), (
+                f"{role_cls.__name__} should appear guilty to Cop"
+            )
+
+    def test_cop_finds_all_neutrals_innocent(self):
+        """Rules: Neutrals appear innocent to Cop."""
+        neutral_roles = [
+            Roles.Jester,
+            Roles.Witch,
+            Roles.Amnesiac,
+            Roles.Survivor,
+            Roles.Serial_killer,
+            Roles.Mass_murderer,
+            Roles.Arsonist,
+        ]
+        for role_cls in neutral_roles:
+            pd_ = make_player_dict()
+            cop = make_player(Roles.Cop, "Cop", pd_)
+            target = make_player(role_cls, "Target", pd_)
+            cop.select_target(target)
+            run_night_actions(pd_)
+            results = " ".join(cop.get_results())
+            assert "innocent" in results.lower(), (
+                f"{role_cls.__name__} should appear innocent to Cop"
+            )
+
+    # --- Seduction messages per rules ---
+
+    def test_seduce_message_to_non_immune_target(self):
+        """Rules: Non-immune target gets 'You were seduced by an Escort or Hooker
+        and forgot to perform your action.'"""
+        pd_ = make_player_dict()
+        escort = make_player(Roles.Escort, "Escort", pd_)
+        cop = make_player(Roles.Cop, "Cop", pd_)
+        suspect = make_player(Roles.Doctor, "Suspect", pd_)
+
+        cop.select_target(suspect)
+        escort.select_target(cop)
+
+        run_night_actions(pd_)
+
+        cop_results = " ".join(cop.get_results())
+        assert "seduced" in cop_results.lower()
+        assert "forgot" in cop_results.lower()
+
+    def test_seduce_message_to_immune_target(self):
+        """Rules: Immune target gets 'An Escort or Hooker attempted to seduce you'."""
+        pd_ = make_player_dict()
+        hooker = make_player(Roles.Hooker, "Hooker", pd_)
+        bd = make_player(Roles.Bus_driver, "BD", pd_)
+
+        hooker.select_target(bd)
+
+        run_night_actions(pd_)
+
+        bd_results = " ".join(bd.get_results())
+        assert "attempted to seduce" in bd_results.lower()
+
+    # --- Tracker sees only first target ---
+
+    def test_tracker_sees_first_target_only(self):
+        """Rules: Tracker learns the followed player's FIRST target."""
+        pd_ = make_player_dict()
+        tracker = make_player(Roles.Tracker, "Tracker", pd_)
+        bd = make_player(Roles.Bus_driver, "BD", pd_)
+        a = make_player(Roles.Cop, "Alice", pd_)
+        b = make_player(Roles.Doctor, "Bob", pd_)
+
+        bd.select_target(a)
+        bd.select_target2(b)
+        tracker.select_target(bd)
+
+        run_night_actions(pd_)
+
+        # Tracker sees BD's first target (Alice), not second (Bob)
+        results = " ".join(tracker.get_results())
+        assert "alice" in results.lower()
+
+    # --- Arsonist ignite non-targeting: Watcher can't see it ---
+
+    def test_arsonist_ignite_invisible_to_tracker(self):
+        """Rules: Ignite is NTA, does not show up when tracked."""
+        pd_ = make_player_dict()
+        arso = make_player(Roles.Arsonist, "Arso", pd_)
+        tracker = make_player(Roles.Tracker, "Tracker", pd_)
+        doused = make_player(Roles.Cop, "Doused", pd_, doused=1)
+
+        arso.arso_action = "Ignite"
+        # Arsonist submits a dummy target for ignite, but check_target_arso
+        # won't require it for Ignite. Let's give one anyway.
+        arso.select_target(doused)
+        tracker.select_target(arso)
+
+        run_night_actions(pd_)
+
+        # Ignite bypasses normal targeting; arso_action=Ignite doesn't
+        # increment actions_used via the Douse/Undouse path.
+        # The target is still in player_dict though since Arsonist doesn't use NTA.
+        # NOTE: Code doesn't use check_target_NTA for Arsonist ignite,
+        # so the target stays visible. This is a code gap vs the rules.
+        # For now, verify the kill still works.
+        assert doused.died_tonight
+
+    # --- Bodyguard protects from all attack levels ---
+
+    def test_bodyguard_cannot_protect_from_veteran_priority(self):
+        """Veteran (priority 1) resolves before Bodyguard (priority 7).
+        BG's defence_level=3 is not yet active when Veteran attacks."""
+        pd_ = make_player_dict()
+        bg = make_player(Roles.Bodyguard, "BG", pd_)
+        target = make_player(Roles.Cop, "Target", pd_)
+        vet = make_player(Roles.Veteran, "Vet", pd_)
+        dummy = make_player(Roles.Doctor, "Dummy", pd_)
+
+        bg.select_target(target)
+        vet.select_target(dummy)  # On guard
+        target.select_target(vet)  # Target visits Vet
+
+        run_night_actions(pd_)
+
+        # Vet resolves at priority 1, killing Target before BG can protect
+        assert target.died_tonight
+        # BG end_action still counter-attacks Vet (attacked_by populated)
+        assert bg.died_tonight

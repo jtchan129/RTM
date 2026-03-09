@@ -1,14 +1,28 @@
 import streamlit as st
 import glob
 import os
-from Game import *
+import random
+
+import pandas as pd
+
+from Game import (
+    Game,
+    clean_string,
+    find_last_file,
+    num_state_files,
+    players_link_id,
+    pull_data,
+    role_distribution_link_id,
+    send_email,
+    update_file,
+)
 
 # Folder to hold game states and the role distribution csv files
 DATA_DIR = os.path.join(os.path.dirname(__file__), "Game Data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-st.set_page_config(page_title='Mafia Moderator Panel', layout='wide')
-st.title('Mafia Moderator Panel')
+st.set_page_config(page_title="Mafia Moderator Panel", layout="wide")
+st.title("Mafia Moderator Panel")
 
 # Find last state number and file and create the game
 last_state_num, last_state_file, _ = find_last_file(None)
@@ -17,19 +31,19 @@ if num_state_files() == 0:
     new_game = True
 else:
     new_game = False
-if 'game' not in st.session_state:
+if "game" not in st.session_state:
     game = Game()
     # Load most recent state
     if last_state_file:
         game.state_df = pd.read_csv(os.path.join(DATA_DIR, last_state_file))
         game.create_players()
-    st.session_state['game'] = game
+    st.session_state["game"] = game
 
-game = st.session_state['game']
+game = st.session_state["game"]
 
 # Display next scheduled operation
-last_night_num = find_last_file('night')[2]
-last_day_num = find_last_file('day')[2]
+last_night_num = find_last_file("night")[2]
+last_day_num = find_last_file("day")[2]
 
 if last_night_num > last_day_num:
     next_step = "Run Voting"
@@ -39,94 +53,190 @@ else:
 st.sidebar.subheader("Next Scheduled Operation")
 st.sidebar.info(f"**{next_step}**")
 
-page = st.sidebar.radio('Go to', [
-    'Overview',
-    'Role Distribution',
-    'Role Assignment',
-    'Email Roles',
-    'Run Night Actions',
-    'Run Voting',
-    'Utilities',
-    'View Files',
-    'Restart Game'
-])
+page = st.sidebar.radio(
+    "Go to",
+    [
+        "Overview",
+        "Role Distribution",
+        "Role Assignment",
+        "Email Roles",
+        "Run Night Actions",
+        "Run Voting",
+        "Utilities",
+        "View Files",
+        "Restart Game",
+    ],
+)
 
 # PAGE: Overview
-if page == 'Overview':
+if page == "Overview":
     # Overview section
-    st.header('Overview')
+    st.header("Overview")
 
     if getattr(game, "state_df", None) is None or game.state_df.empty:
-        game.state_df = pd.DataFrame(columns=[
-            "Name",
-            "Email",
-            "Role",
-            "Time died",
-            "Actions used",
-            "Doused",
-            "Sabotaged",
-            "Marked",
-            "Revealed Mayor"
-        ])
+        game.state_df = pd.DataFrame(
+            columns=[
+                "Name",
+                "Email",
+                "Role",
+                "Time died",
+                "Actions used",
+                "Doused",
+                "Sabotaged",
+                "Marked",
+                "Revealed Mayor",
+            ]
+        )
         st.warning("No game state found. Please randomize and assign roles first.")
     else:
         # Checkbox to show hidden columns
-        hidden_col_button = st.checkbox('Show Hidden Columns', value=False)
-        visible_cols = ['Name', 'Email', 'Time died']
+        hidden_col_button = st.checkbox("Show Hidden Columns", value=False)
+        visible_cols = ["Name", "Email", "Time died"]
         if hidden_col_button:
-            visible_cols += ['Role', 'Actions used', 'Doused', 'Sabotaged', 'Marked', 'Revealed Mayor']
+            visible_cols += [
+                "Role",
+                "Actions used",
+                "Doused",
+                "Sabotaged",
+                "Marked",
+                "Revealed Mayor",
+            ]
 
         # Checkbox to filter only living players
-        filter_button = st.checkbox('Filter Dead Players', value=False)
-        
+        filter_button = st.checkbox("Filter Dead Players", value=False)
+
         # Apply both filters together
         df_to_show = game.state_df.copy()
         if filter_button:
-            df_to_show = df_to_show[df_to_show['Time died'] == 'Alive']
-        
+            df_to_show = df_to_show[
+                df_to_show["Time died"].apply(clean_string) == clean_string("Alive")
+            ]
+
         # Show dataframe
         st.dataframe(df_to_show[visible_cols])
 
 
 # PAGE: Role Distribution
-if page == 'Role Distribution':
-    st.header('Role Distribution')
+if page == "Role Distribution":
+    st.header("Role Distribution")
     if not new_game:
-        st.warning("The game state file has already been populated, role Distribution cannot be changed. Restart game to change distribution")
+        st.warning(
+            "The game state file has already been populated, role Distribution cannot be changed. Restart game to change distribution"
+        )
     else:
-        if 'rand_key' not in st.session_state:
-            st.session_state['rand_key'] = 0
+        if "rand_key" not in st.session_state:
+            st.session_state["rand_key"] = 0
         # Role lists for manual editing
-        town_investigative_list = ['Detective', 'Cop', 'Tracker', 'Watcher']
-        town_killing_list = ['Vigilante', 'Bodyguard', 'Veteran', 'Bomb']
-        town_support_list = ['Mayor', 'Bus_driver', 'Escort', 'Doctor']
-        town_random_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor']
-        mafia_list = ['Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur']
-        neutral_list = ['Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
-        full_roles_list = ['Detective', 'Cop', 'Tracker', 'Watcher', 'Vigilante', 'Bodyguard', 'Veteran', 'Bomb', 'Mayor', 'Bus_driver', 'Escort', 'Doctor', 'Godfather', 'Lookout', 'Framer', 'Sniper', 'Yakuza', 'Janitor', 'Limo_driver', 'Hooker', 'Stalker', 'Sniper', 'Saboteur', 'Amnesiac', 'Arsonist', 'Jester', 'Witch', 'Serial_killer', 'Survivor', 'Mass_murderer']
-        unique_dict = {'Bomb': 1,
-                        'Mayor': 1,
-                        'Bus_driver': 1,
-                        'Limo_driver': 1,
-                        'Sniper': 1,
-                        'Saboteur': 1,
-                        "Amnesiac": 1}
-        required_dict = {'Godfather': 1}
+        town_investigative_list = ["Detective", "Cop", "Tracker", "Watcher"]
+        town_killing_list = ["Vigilante", "Bodyguard", "Veteran", "Bomb"]
+        town_support_list = ["Mayor", "Bus_driver", "Escort", "Doctor"]
+        town_random_list = [
+            "Detective",
+            "Cop",
+            "Tracker",
+            "Watcher",
+            "Vigilante",
+            "Bodyguard",
+            "Veteran",
+            "Bomb",
+            "Mayor",
+            "Bus_driver",
+            "Escort",
+            "Doctor",
+        ]
+        mafia_list = [
+            "Lookout",
+            "Framer",
+            "Sniper",
+            "Yakuza",
+            "Janitor",
+            "Limo_driver",
+            "Hooker",
+            "Stalker",
+            "Sniper",
+            "Saboteur",
+        ]
+        neutral_list = [
+            "Amnesiac",
+            "Arsonist",
+            "Jester",
+            "Witch",
+            "Serial_killer",
+            "Survivor",
+            "Mass_murderer",
+        ]
+        full_roles_list = [
+            "Detective",
+            "Cop",
+            "Tracker",
+            "Watcher",
+            "Vigilante",
+            "Bodyguard",
+            "Veteran",
+            "Bomb",
+            "Mayor",
+            "Bus_driver",
+            "Escort",
+            "Doctor",
+            "Godfather",
+            "Lookout",
+            "Framer",
+            "Sniper",
+            "Yakuza",
+            "Janitor",
+            "Limo_driver",
+            "Hooker",
+            "Stalker",
+            "Sniper",
+            "Saboteur",
+            "Amnesiac",
+            "Arsonist",
+            "Jester",
+            "Witch",
+            "Serial_killer",
+            "Survivor",
+            "Mass_murderer",
+        ]
+        unique_dict = {
+            "Bomb": 1,
+            "Mayor": 1,
+            "Bus_driver": 1,
+            "Limo_driver": 1,
+            "Sniper": 1,
+            "Saboteur": 1,
+            "Amnesiac": 1,
+        }
+        required_dict = {"Godfather": 1}
 
         # Pulling data from the Google Sheet
-        if 'role_dist_df' not in st.session_state:
-            st.session_state['role_dist_df'], st.session_state['role_dist_worksheet'] = pull_data(role_distribution_link_id, os.path.join(DATA_DIR, 'role_distribution.csv'))
+        if "role_dist_df" not in st.session_state:
+            (
+                st.session_state["role_dist_df"],
+                st.session_state["role_dist_worksheet"],
+            ) = pull_data(
+                role_distribution_link_id,
+                os.path.join(DATA_DIR, "role_distribution.csv"),
+            )
 
         # Category options
-        category_options = ['Town Investigative', 'Town Killing', 'Town Support', 'Town Random', 'Mafia', 'Neutral'] + full_roles_list
+        category_options = [
+            "Town Investigative",
+            "Town Killing",
+            "Town Support",
+            "Town Random",
+            "Mafia",
+            "Neutral",
+        ] + full_roles_list
 
         # Random role distribution
-        if st.button('Randomize Role Distribution'):
-            st.session_state['role_dist_df'] = game.randomize_roles(st.session_state['role_dist_df'])
-            st.session_state['rand_key'] += 1
-            st.success('Roles have been randomized!')
-        
-        role_dist_df = st.session_state['role_dist_df']
+        if st.button("Randomize Role Distribution"):
+            st.session_state["role_dist_df"] = game.randomize_roles(
+                st.session_state["role_dist_df"]
+            )
+            st.session_state["rand_key"] += 1
+            st.success("Roles have been randomized!")
+
+        role_dist_df = st.session_state["role_dist_df"]
 
         # Manual role distribution
         header_cols = st.columns([1, 1])
@@ -135,126 +245,161 @@ if page == 'Role Distribution':
 
         # Track changes
         updated_roles = []
-        
+
         # Render table row by row
         for i, row in role_dist_df.iterrows():
             cols = st.columns([1, 1])
-            category = row['Role Distribution Category']
-            current_role = row['Actual Role Distribution']
+            category = row["Role Distribution Category"]
+            current_role = row["Actual Role Distribution"]
+            normalized_categories = [
+                clean_string(option) for option in category_options
+            ]
+            category_clean = clean_string(category)
+            category_index = (
+                normalized_categories.index(category_clean)
+                if category_clean in normalized_categories
+                else 0
+            )
 
             # Category column
             new_cat = cols[0].selectbox(
-                label=f"Category",
+                label="Category",
                 options=category_options,
-                index=category_options.index(category),
+                index=category_index,
                 key=f"cat_{i}_{st.session_state['rand_key']}",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
 
             if new_cat in full_roles_list:
                 role_options = [new_cat]
-            elif new_cat == 'Town Investigative':
+            elif new_cat == "Town Investigative":
                 role_options = town_investigative_list
-            elif new_cat == 'Town Killing':
+            elif new_cat == "Town Killing":
                 role_options = town_killing_list
-            elif new_cat == 'Town Support':
+            elif new_cat == "Town Support":
                 role_options = town_support_list
-            elif new_cat == 'Town Random':
+            elif new_cat == "Town Random":
                 role_options = town_random_list
-            elif new_cat == 'Mafia':
+            elif new_cat == "Mafia":
                 role_options = mafia_list
-            elif new_cat == 'Neutral':
+            elif new_cat == "Neutral":
                 role_options = neutral_list
             else:
                 role_options = town_random_list + mafia_list + neutral_list
 
             # Actual role column
+            normalized_role_options = [clean_string(option) for option in role_options]
+            current_role_clean = clean_string(current_role)
+            role_index = (
+                normalized_role_options.index(current_role_clean)
+                if current_role_clean in normalized_role_options
+                else 0
+            )
             new_role = cols[1].selectbox(
                 label=f"Select for {new_cat}",
                 options=role_options,
-                index=role_options.index(current_role) if current_role in role_options else 0,
+                index=role_index,
                 key=f"role_{i}_{st.session_state['rand_key']}",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
 
-            updated_roles.append({
-                'Role Distribution Category': new_cat,
-                'Actual Role Distribution': new_role
-            })
+            updated_roles.append(
+                {
+                    "Role Distribution Category": new_cat,
+                    "Actual Role Distribution": new_role,
+                }
+            )
 
         updated_df = pd.DataFrame(updated_roles)
 
         # Checking if any roles that do not meet their requirements
         violations = []
         for role, limit in unique_dict.items():
-            count = (updated_df['Actual Role Distribution'] == role).sum()
+            count = (
+                updated_df["Actual Role Distribution"].apply(clean_string)
+                == clean_string(role)
+            ).sum()
             if count > limit:
                 violations.append(f"'{role}' appears {count} times (limit {limit})")
         for role, minimum in required_dict.items():
-            count = (updated_df['Actual Role Distribution'] == role).sum()
+            count = (
+                updated_df["Actual Role Distribution"].apply(clean_string)
+                == clean_string(role)
+            ).sum()
             if count < minimum:
                 violations.append(f"'{role}' appears {count} times (minimum {minimum})")
 
         if violations:
-            st.warning("Some roles violate their requirements:\n" + "\n".join(violations))
+            st.warning(
+                "Some roles violate their requirements:\n" + "\n".join(violations)
+            )
             save_disabled = True
         else:
             save_disabled = False
 
         # Saving the role distribution
-        if st.button('Save Role Distribution Changes', disabled=save_disabled):
-            updated_df.to_csv(os.path.join(DATA_DIR, 'role_distribution.csv'), index=False)
-            update_file(updated_df, st.session_state['role_dist_worksheet'])
-            st.session_state['role_dist_df'] = updated_df
+        if st.button("Save Role Distribution Changes", disabled=save_disabled):
+            updated_df.to_csv(
+                os.path.join(DATA_DIR, "role_distribution.csv"), index=False
+            )
+            update_file(updated_df, st.session_state["role_dist_worksheet"])
+            st.session_state["role_dist_df"] = updated_df
             st.success("Role Distribution saved!")
 
 
 # PAGE: Role Assignment
-elif page == 'Role Assignment':
-    st.header('Role Assignment')
+elif page == "Role Assignment":
+    st.header("Role Assignment")
     if last_state_num > 0:
         st.warning("The game has already started. Role Assignments cannot be changed.")
     else:
         # Getting the initial player data from the Role Assignments worksheet
         if getattr(game, "state_df", None) is None or game.state_df.empty:
             game.state_df, state_worksheet = pull_data(players_link_id, None)
-            game.state_df['Time died'] = 'Alive'
-            game.state_df['Actions used'] = 0
-            game.state_df['Doused'] = 0
-            game.state_df['Sabotaged'] = 0
-            game.state_df['Marked'] = 0
-            game.state_df['Revealed Mayor'] = 0
+            game.state_df["Time died"] = "Alive"
+            game.state_df["Actions used"] = 0
+            game.state_df["Doused"] = 0
+            game.state_df["Sabotaged"] = 0
+            game.state_df["Marked"] = 0
+            game.state_df["Revealed Mayor"] = 0
         else:
             __, state_worksheet = pull_data(players_link_id, None)
-        
-        role_dist_df = pd.read_csv(os.path.join(DATA_DIR, 'role_distribution.csv'))
-        roles = role_dist_df['Actual Role Distribution'].tolist()
-        prev_roles = st.session_state.get('prev_roles', [])
-        all_players = game.state_df['Name'].tolist()
-        
-        st.write('Use this section to randomly or manually assign player roles before starting the game.')
+
+        role_dist_df = pd.read_csv(os.path.join(DATA_DIR, "role_distribution.csv"))
+        roles = role_dist_df["Actual Role Distribution"].tolist()
+        prev_roles = st.session_state.get("prev_roles", [])
+        all_players = game.state_df["Name"].tolist()
+
+        st.write(
+            "Use this section to randomly or manually assign player roles before starting the game."
+        )
 
         # Initializing variables
-        if 'player_rand_key' not in st.session_state:
-            st.session_state['player_rand_key'] = 0
+        if "player_rand_key" not in st.session_state:
+            st.session_state["player_rand_key"] = 0
 
         # If role distribution changed, refresh assignments
-        if roles != prev_roles or 'randomized_assignments' not in st.session_state:
+        if roles != prev_roles or "randomized_assignments" not in st.session_state:
             shuffled_players = all_players.copy()
             random.shuffle(shuffled_players)
-            st.session_state['randomized_assignments'] = [{"Role": r, "Name": shuffled_players[i % len(shuffled_players)]} for i, r in enumerate(roles)]
-            st.session_state['prev_roles'] = roles
+            st.session_state["randomized_assignments"] = [
+                {"Role": r, "Name": shuffled_players[i % len(shuffled_players)]}
+                for i, r in enumerate(roles)
+            ]
+            st.session_state["prev_roles"] = roles
 
         # Random assignment
-        if st.button('Assign Roles Randomly'):
+        if st.button("Assign Roles Randomly"):
             shuffled_players = all_players.copy()
             random.shuffle(shuffled_players)
-            randomized_assignments = [{"Role": r, "Name": p} for r, p in zip(roles, shuffled_players)]
-            st.session_state['randomized_assignments'] = randomized_assignments
-            st.session_state['player_rand_key'] += 1
-            st.success('Roles randomly assigned to players')
+            randomized_assignments = [
+                {"Role": r, "Name": p} for r, p in zip(roles, shuffled_players)
+            ]
+            st.session_state["randomized_assignments"] = randomized_assignments
+            st.session_state["player_rand_key"] += 1
+            st.success("Roles randomly assigned to players")
 
-        assignments = st.session_state['randomized_assignments']
+        assignments = st.session_state["randomized_assignments"]
 
         updated_assignments = []
 
@@ -271,22 +416,30 @@ elif page == 'Role Assignment':
                 options=all_players,
                 index=all_players.index(assign["Name"]),
                 key=f"player_select_{i}_{st.session_state['player_rand_key']}",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
-            updated_assignments.append({"Role": assign["Role"], "Name": selected_player})
+            updated_assignments.append(
+                {"Role": assign["Role"], "Name": selected_player}
+            )
 
         updated_df = pd.DataFrame(updated_assignments)
 
         # Checking for duplicates
-        player_counts = updated_df['Name'].value_counts()
+        player_counts = updated_df["Name"].value_counts()
         duplicate_players = player_counts[player_counts > 1].index.tolist()
-        unassigned_players = [p for p in all_players if p not in updated_df['Name'].tolist()]
+        unassigned_players = [
+            p for p in all_players if p not in updated_df["Name"].tolist()
+        ]
 
         if duplicate_players or unassigned_players:
             if duplicate_players:
-                st.warning(f"The following players have multiple roles: {', '.join(duplicate_players)}")
+                st.warning(
+                    f"The following players have multiple roles: {', '.join(duplicate_players)}"
+                )
             if unassigned_players:
-                st.warning(f"The following players have no role assigned: {', '.join(unassigned_players)}")
+                st.warning(
+                    f"The following players have no role assigned: {', '.join(unassigned_players)}"
+                )
             save_disabled = True
         else:
             save_disabled = False
@@ -295,152 +448,156 @@ elif page == 'Role Assignment':
         if st.button("Save Role Assignments", disabled=save_disabled):
             st.success("Role assignments updated!")
             for _, row in updated_df.iterrows():
-                role = row['Role']
-                name = row['Name']
-                game.state_df.loc[game.state_df['Name'] == name, 'Role'] = role
+                role = row["Role"]
+                name = row["Name"]
+                game.state_df.loc[game.state_df["Name"] == name, "Role"] = role
             # Saving roles in csv and Google Sheets
-            game.state_df.to_csv(os.path.join(DATA_DIR, 'game_state0_day0.csv'), index=False)
-            update_file(game.state_df[['Name', 'Email', 'Role']], state_worksheet)
+            game.state_df.to_csv(
+                os.path.join(DATA_DIR, "game_state0_day0.csv"), index=False
+            )
+            update_file(game.state_df[["Name", "Email", "Role"]], state_worksheet)
 
 
 # PAGE: Email Roles
-elif page == 'Email Roles':
-    st.header('Email Roles to Players')
-    st.write('Preview and send each player an email with their assigned role.')
+elif page == "Email Roles":
+    st.header("Email Roles to Players")
+    st.write("Preview and send each player an email with their assigned role.")
     # Preview email button
-    if st.button('Preview Emails'):
-        st.session_state['email_df'] = game.email_roles_preview()
+    if st.button("Preview Emails"):
+        st.session_state["email_df"] = game.email_roles_preview()
 
     # Send email button
-    if 'email_df' in st.session_state and not st.session_state['email_df'].empty:
-        email_df = st.session_state['email_df']
+    if "email_df" in st.session_state and not st.session_state["email_df"].empty:
+        email_df = st.session_state["email_df"]
         st.dataframe(email_df)
 
-        if st.button('Send Emails'):
+        if st.button("Send Emails"):
             for _, row in email_df.iterrows():
                 # Parsing emails
-                receiver_field = row['Email']
-                if isinstance(receiver_field, str) and ',' in receiver_field:
-                    receiver_email = [e.strip() for e in receiver_field.split(',')]
+                receiver_field = row["Email"]
+                if isinstance(receiver_field, str) and "," in receiver_field:
+                    receiver_email = [e.strip() for e in receiver_field.split(",")]
                 else:
                     receiver_email = receiver_field
-                message_text_list = [row['Email Preview']]
-                subject = row['Email Subject']
+                message_text_list = [row["Email Preview"]]
+                subject = row["Email Subject"]
                 send_email(receiver_email, message_text_list, subject)
-            
+
             st.success("Emails sent successfully!")
 
 
 # PAGE: Run Night Actions
-elif page == 'Run Night Actions':
-    st.header('Run Night Actions')
-    st.write('Run night actions and resolve outcomes.')
+elif page == "Run Night Actions":
+    st.header("Run Night Actions")
+    st.write("Run night actions and resolve outcomes.")
 
-    if 'night_preview_df' not in st.session_state:
-        st.session_state['night_preview_df'] = pd.DataFrame()
+    if "night_preview_df" not in st.session_state:
+        st.session_state["night_preview_df"] = pd.DataFrame()
 
-    if st.button('Preview Night Actions'):
-        st.session_state['night_preview_df'] = game.run_night(preview_only=True)
-    
-    if not st.session_state['night_preview_df'].empty:
-        st.dataframe(st.session_state['night_preview_df'])
+    if st.button("Preview Night Actions"):
+        st.session_state["night_preview_df"] = game.run_night(preview_only=True)
+
+    if not st.session_state["night_preview_df"].empty:
+        st.dataframe(st.session_state["night_preview_df"])
 
         public_option = st.radio(
             "Public Result Option:",
-            ("Use default public result", "Send custom public result")
+            ("Use default public result", "Send custom public result"),
         )
 
-        if 'custom_public_result' not in st.session_state:
-            st.session_state['custom_public_result'] = ""
-        
+        if "custom_public_result" not in st.session_state:
+            st.session_state["custom_public_result"] = ""
+
         if public_option == "Send custom public result":
-            st.session_state['custom_public_result'] = st.text_area(
+            st.session_state["custom_public_result"] = st.text_area(
                 "Enter custom public result:",
-                value=st.session_state['custom_public_result']
+                value=st.session_state["custom_public_result"],
             )
 
-        if st.button('Confirm and Send Night Results'):
+        if st.button("Confirm and Send Night Results"):
             if public_option == "Use default public result":
                 custom_result_arg = None
             else:
-                custom_result_arg = st.session_state['custom_public_result']
+                custom_result_arg = st.session_state["custom_public_result"]
 
-            _ = game.run_night(preview_only=False, custom_public_result=custom_result_arg)
-            st.success('Night Results Sent')
+            _ = game.run_night(
+                preview_only=False, custom_public_result=custom_result_arg
+            )
+            st.success("Night Results Sent")
 
 
-# PAGE: Run Voting 
-elif page == 'Run Voting':
-    st.header('Run Voting')
-    st.write('Process voting to execute a player.')
+# PAGE: Run Voting
+elif page == "Run Voting":
+    st.header("Run Voting")
+    st.write("Process voting to execute a player.")
 
-    if 'vote_preview' not in st.session_state:
-        st.session_state['vote_preview'] = ""
+    if "vote_preview" not in st.session_state:
+        st.session_state["vote_preview"] = ""
 
-    if 'vote_summary' not in st.session_state:
-        st.session_state['vote_summary'] = {}
+    if "vote_summary" not in st.session_state:
+        st.session_state["vote_summary"] = {}
 
-    if 'custom_vote_public_result' not in st.session_state:
-        st.session_state['custom_vote_public_result'] = ""
+    if "custom_vote_public_result" not in st.session_state:
+        st.session_state["custom_vote_public_result"] = ""
 
-    if st.button('Preview Voting Results'):
-        st.session_state['vote_preview'], st.session_state['vote_summary'] = game.run_voting(preview_only=True)
+    if st.button("Preview Voting Results"):
+        st.session_state["vote_preview"], st.session_state["vote_summary"] = (
+            game.run_voting(preview_only=True)
+        )
 
-    if st.session_state['vote_preview']:
+    if st.session_state["vote_preview"]:
         st.subheader("Vote Preview and Breakdown")
-        st.info(st.session_state['vote_preview'])
+        st.info(st.session_state["vote_preview"])
 
         for player, votes in sorted(
-            st.session_state['vote_summary'].items(),
-            key=lambda x: x[1],
-            reverse=True
+            st.session_state["vote_summary"].items(), key=lambda x: x[1], reverse=True
         ):
             st.write(f"**{player}**: {votes} vote(s)")
 
         public_option = st.radio(
             "Public Result Option:",
-            ("Use default public result", "Send custom public result")
+            ("Use default public result", "Send custom public result"),
         )
 
         if public_option == "Send custom public result":
-            st.session_state['custom_vote_public_result'] = st.text_area(
+            st.session_state["custom_vote_public_result"] = st.text_area(
                 "Enter custom public result:",
-                value=st.session_state['custom_vote_public_result']
+                value=st.session_state["custom_vote_public_result"],
             )
 
-        if st.button('Confirm and Execute Vote'):
+        if st.button("Confirm and Execute Vote"):
             if public_option == "Use default public result":
                 custom_result_arg = None
             else:
-                custom_result_arg = st.session_state['custom_vote_public_result']
+                custom_result_arg = st.session_state["custom_vote_public_result"]
             game.run_voting(preview_only=False, custom_public_result=custom_result_arg)
-            st.success('Voting execution complete! Results sent and state saved.')
-            st.session_state['vote_preview'] = ""
-            st.session_state['vote_summary'] = {}
+            st.success("Voting execution complete! Results sent and state saved.")
+            st.session_state["vote_preview"] = ""
+            st.session_state["vote_summary"] = {}
 
 
 # PAGE: Utilities
-elif page == 'Utilities':
-    st.header('Utilities')
+elif page == "Utilities":
+    st.header("Utilities")
 
-    st.subheader('Reveal Mayor')
-    mayor_name = st.text_input('Enter player name:')
-    if st.button('Reveal Mayor'):
+    st.subheader("Reveal Mayor")
+    mayor_name = st.text_input("Enter player name:")
+    if st.button("Reveal Mayor"):
         if mayor_name:
             game.reveal_mayor(mayor_name)
-            st.success(f'{mayor_name} has revealed as Mayor.')
+            st.success(f"{mayor_name} has revealed as Mayor.")
         else:
-            st.warning('Please enter a player name.')
+            st.warning("Please enter a player name.")
 
-    st.subheader('Assign New Godfather')
-    if st.button('Assign New Godfather'):
+    st.subheader("Assign New Godfather")
+    if st.button("Assign New Godfather"):
         game.assign_new_godfather()
-        st.success('New Godfather assigned')
+        st.success("New Godfather assigned")
 
 
 # PAGE: View Files
-elif page == 'View Files':
-    st.header('View Saved Files')
+elif page == "View Files":
+    st.header("View Saved Files")
     # List CSV files
     csv_files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
     csv_files.sort()
@@ -462,7 +619,7 @@ elif page == 'View Files':
 
 
 # PAGE: Restart Game
-elif page == 'Restart Game':
+elif page == "Restart Game":
     st.subheader("Restart Game")
 
     # Restart game button and confimation
@@ -489,8 +646,8 @@ elif page == 'Restart Game':
         for file in csv_files:
             os.remove(file)
 
-        if 'game' in st.session_state:
-            del st.session_state['game']
+        if "game" in st.session_state:
+            del st.session_state["game"]
         st.session_state["confirm_restart"] = False
         st.session_state["cancel_message"] = False
         st.session_state["restart_done"] = True

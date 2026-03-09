@@ -496,6 +496,12 @@ elif page == "Run Night Actions":
 
     if st.button("Preview Night Actions"):
         st.session_state["night_preview_df"] = game.run_night(preview_only=True)
+        st.session_state["night_warnings"] = getattr(game, "night_warnings", [])
+
+    # Display warnings prominently if any
+    if st.session_state.get("night_warnings"):
+        for w in st.session_state["night_warnings"]:
+            st.warning(w)
 
     if not st.session_state["night_preview_df"].empty:
         st.dataframe(st.session_state["night_preview_df"])

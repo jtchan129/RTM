@@ -446,8 +446,8 @@ class Game:
         # Create the group email to send public results
         self.create_rtm_group_email()
 
-        # Setting targets
-        self.set_targets()
+        # Setting targets (returns warnings about invalid submissions)
+        self.night_warnings = self.set_targets()
 
         # Run actions in priority order
         self.run_actions()
@@ -468,6 +468,17 @@ class Game:
 
         # Creating preview data
         email_data = []
+
+        # Add warnings row if any
+        if self.night_warnings:
+            email_data.append(
+                {
+                    "Name": "⚠ Warnings",
+                    "Email": "Moderator",
+                    "Role": "Warnings",
+                    "Results Preview": self.night_warnings,
+                }
+            )
 
         # Add public result row
         email_data.append(
@@ -847,6 +858,8 @@ class Game:
 
     # There may be a more efficient way to do this
     def set_targets(self):
+        warnings = []
+
         player_lookup = {
             clean_string(player.get_name()): player
             for player in self.player_dict
@@ -854,12 +867,37 @@ class Game:
         }
 
         for _, row in self.actions_df.iterrows():
-            player = player_lookup.get(clean_string(row["Name"]))
+            name = row["Name"]
+            player = player_lookup.get(clean_string(name))
             if player is None:
+                warnings.append(
+                    f"'{name}' submitted an action but is not a recognized player. Ignored."
+                )
+                continue
+
+            role_name = type(player).__name__
+
+            # Skip dead players
+            if player.dead:
+                warnings.append(
+                    f"'{name}' ({role_name}) submitted an action but is dead. Ignored."
+                )
+                continue
+
+            # Skip players with no targeting ability or no actions remaining
+            if player.number_actions == 0:
+                warnings.append(
+                    f"'{name}' ({role_name}) submitted an action but has no targeting ability. Ignored."
+                )
+                continue
+            if player.actions_used >= player.number_actions:
+                warnings.append(
+                    f"'{name}' ({role_name}) submitted an action but has no actions remaining. Ignored."
+                )
                 continue
 
             # Setting arsonist action choice
-            if str(type(player).__name__) == "Arsonist":
+            if role_name == "Arsonist":
                 arsonist_action_clean = clean_string(
                     row["Arsonist only: 'Douse' 'Undouse' or 'Ignite'"]
                 )
@@ -876,12 +914,28 @@ class Game:
                 player.select_target(target)
 
         for _, row in self.actions_df.iterrows():
-            player = player_lookup.get(clean_string(row["Name"]))
-            target2 = player_lookup.get(
-                clean_string(row["Who do you want your second target to be"])
-            )
-            if player is not None and target2 is not None:
-                player.select_target2(target2)
+            name = row["Name"]
+            player = player_lookup.get(clean_string(name))
+            if player is None or player.dead:
+                continue
+            if (
+                player.number_actions == 0
+                or player.actions_used >= player.number_actions
+            ):
+                continue
+
+            target2_name = row["Who do you want your second target to be"]
+            target2 = player_lookup.get(clean_string(target2_name))
+            if target2 is not None:
+                if isinstance(player, Roles.Two_targeter):
+                    player.select_target2(target2)
+                else:
+                    warnings.append(
+                        f"'{name}' ({type(player).__name__}) submitted a second target "
+                        f"'{target2_name}' but only has one target. Using first target only."
+                    )
+
+        return warnings
 
     def run_actions(self):
         priority_list = [

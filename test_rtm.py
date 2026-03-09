@@ -4147,3 +4147,193 @@ class TestAdditionalRulesCoverage:
         assert target.died_tonight
         # BG end_action still counter-attacks Vet (attacked_by populated)
         assert bg.died_tonight
+
+
+# ===========================================================================
+# 33. SET_TARGETS ROBUSTNESS (duplicate, extra target, invalid submissions)
+# ===========================================================================
+
+
+def make_actions_df(rows):
+    """Build an actions DataFrame matching the Google Form schema."""
+    columns = [
+        "Timestamp",
+        "Email Address",
+        "Name",
+        "Who do you want to target with your night action",
+        "Who do you want your second target to be",
+        "Arsonist only: 'Douse' 'Undouse' or 'Ignite'",
+    ]
+    data = []
+    for i, r in enumerate(rows):
+        data.append(
+            {
+                "Timestamp": f"2026-01-01 00:0{i}:00",
+                "Email Address": r.get("email", ""),
+                "Name": r["name"],
+                "Who do you want to target with your night action": r.get(
+                    "target1", ""
+                ),
+                "Who do you want your second target to be": r.get("target2", ""),
+                "Arsonist only: 'Douse' 'Undouse' or 'Ignite'": r.get(
+                    "arso_action", ""
+                ),
+            }
+        )
+    return pd.DataFrame(data, columns=columns)
+
+
+def make_game_with_actions(player_specs, action_rows):
+    """Create a Game with player_dict and actions_df set up for set_targets testing."""
+    game = Game()
+    game.player_dict = defaultdict(list)
+    for spec in player_specs:
+        role_cls = spec["role"]
+        p = role_cls(
+            name=spec["name"],
+            email=f"{spec['name'].lower()}@test.com",
+            player_dict=game.player_dict,
+            dead=spec.get("dead", False),
+            actions_used=spec.get("actions_used", 0),
+        )
+        game.player_dict[p] = []
+    game.actions_df = make_actions_df(action_rows)
+    return game
+
+
+class TestSetTargetsRobustness:
+    """Tests for set_targets handling of bad/duplicate/extra submissions."""
+
+    def test_dead_player_action_ignored_with_warning(self):
+        """Dead player submitting an action is ignored and warns moderator."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Cop, "name": "DeadCop", "dead": True},
+                {"role": Roles.Doctor, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "DeadCop", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 1
+        assert "dead" in warnings[0].lower()
+        assert "DeadCop" in warnings[0]
+        # Target should NOT have been set
+        for player in game.player_dict:
+            assert player.get_target() is None
+
+    def test_no_action_role_ignored_with_warning(self):
+        """A role with number_actions=0 (e.g., Mafioso) submitting is warned."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Mafioso, "name": "Grunt"},
+                {"role": Roles.Doctor, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "Grunt", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 1
+        assert "no targeting ability" in warnings[0].lower()
+
+    def test_no_actions_remaining_warned(self):
+        """Player who has used all their actions is warned."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Veteran, "name": "Vet", "actions_used": 3},
+                {"role": Roles.Doctor, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "Vet", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 1
+        assert "no actions remaining" in warnings[0].lower()
+
+    def test_extra_target_on_single_targeter_warned(self):
+        """Non-Two_targeter submitting a second target: warn and use only first."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Cop, "name": "Cop"},
+                {"role": Roles.Doctor, "name": "Alice"},
+                {"role": Roles.Escort, "name": "Bob"},
+            ],
+            action_rows=[
+                {"name": "Cop", "target1": "Alice", "target2": "Bob"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 1
+        assert "second target" in warnings[0].lower()
+        assert "first target only" in warnings[0].lower()
+        # First target should be set
+        cop = next(p for p in game.player_dict if type(p).__name__ == "Cop")
+        assert cop.get_target() is not None
+        assert cop.get_target().get_name() == "Alice"
+
+    def test_two_targeter_second_target_accepted(self):
+        """Bus Driver submitting two targets works normally with no warnings."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Bus_driver, "name": "BD"},
+                {"role": Roles.Doctor, "name": "Alice"},
+                {"role": Roles.Escort, "name": "Bob"},
+            ],
+            action_rows=[
+                {"name": "BD", "target1": "Alice", "target2": "Bob"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 0
+        bd = next(p for p in game.player_dict if type(p).__name__ == "Bus_driver")
+        assert bd.get_target().get_name() == "Alice"
+        assert bd.get_target2().get_name() == "Bob"
+
+    def test_unrecognized_player_warned(self):
+        """A name not matching any player warns and is skipped."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Cop, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "NonExistentPlayer", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 1
+        assert "not a recognized player" in warnings[0].lower()
+
+    def test_valid_submission_no_warnings(self):
+        """Normal valid submission produces no warnings."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Cop, "name": "Cop"},
+                {"role": Roles.Doctor, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "Cop", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 0
+        cop = next(p for p in game.player_dict if type(p).__name__ == "Cop")
+        assert cop.get_target().get_name() == "Alice"
+
+    def test_multiple_warnings_combined(self):
+        """Multiple bad submissions produce multiple warnings."""
+        game = make_game_with_actions(
+            player_specs=[
+                {"role": Roles.Cop, "name": "DeadCop", "dead": True},
+                {"role": Roles.Mafioso, "name": "Grunt"},
+                {"role": Roles.Doctor, "name": "Alice"},
+            ],
+            action_rows=[
+                {"name": "DeadCop", "target1": "Alice"},
+                {"name": "Grunt", "target1": "Alice"},
+            ],
+        )
+        warnings = game.set_targets()
+        assert len(warnings) == 2

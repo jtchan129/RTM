@@ -6,3 +6,4 @@ mod_email_app_password.csv
 Game Data/*
 
 __pycache__/*
+.vscode/*

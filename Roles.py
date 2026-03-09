@@ -352,7 +352,7 @@ class Bomb(Town):
 
     # Explode
     def end_action(self):
-        if self.attacked_by:
+        if self.died_tonight and self.attacked_by:
             for attacker in self.attacked_by:
                 self.attack(attacker)
 
@@ -364,7 +364,7 @@ class Bodyguard(Town):
     @check_target
     def perform_action(self):
         if self.get_target() != self:
-            self.get_target().defence_level = 1
+            self.get_target().defence_level = 3
 
     # Counter attack
     @check_target_no_increment

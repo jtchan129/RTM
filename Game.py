@@ -885,9 +885,9 @@ class Game:
 
     def run_actions(self):
         priority_list = [
+            "Veteran",
             "Bus_driver",
             "Limo_driver",
-            "Veteran",
             "Witch",
             "Escort",
             "Hooker",
